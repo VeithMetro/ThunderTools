@@ -46,7 +46,7 @@ jobs:
             {
               "name": "OutOfProcess",
               "header": "IBrowser.h",
-              "answers": ["OutOfProcess", "Y", "N", "__INTERFACES_H__", "", "N", ""],
+              "answers": ["OutOfProcess", "Y", "N", "__INTERFACES_H__", "", "", "N", ""],
             },
           ]
 
