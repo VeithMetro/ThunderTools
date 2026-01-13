@@ -13,14 +13,21 @@ on:
       - "PluginSkeletonGenerator/**"
       - ".github/workflows/generate-plugin-skeletons.yml"
 
+# Needed for pushing to gh-pages + PR comments
 permissions:
   contents: write
   pull-requests: write
+
+# Avoid two runs pushing gh-pages at the same time
+concurrency:
+  group: pages-previews
+  cancel-in-progress: false
 
 jobs:
   generate:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - variant: InProcess
@@ -78,13 +85,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ generate ]
 
+    # Skip deploy/comment for fork PRs (no write access)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
     steps:
       - name: Download all generated artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Build static preview site
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Setup Node (for diff2html-cli)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build static preview site (and diff for PRs)
         shell: bash
         run: |
           set -euo pipefail
@@ -100,9 +120,61 @@ jobs:
 
           mkdir -p "site/$DEST_DIR"
 
-          cp -a artifacts/PluginSkeleton-InProcess   "site/$DEST_DIR/InProcess"
+          # Copy outputs into Pages structure
+          cp -a artifacts/PluginSkeleton-InProcess    "site/$DEST_DIR/InProcess"
           cp -a artifacts/PluginSkeleton-OutOfProcess "site/$DEST_DIR/OutOfProcess"
 
+          # For PRs: generate a baseline from the PR base SHA and create HTML diffs
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Checkout baseline generator code at PR base SHA
+            git clone --no-checkout "https://github.com/${{ github.repository }}.git" base_repo
+            git -C base_repo checkout --detach "${{ github.event.pull_request.base.sha }}"
+
+            # Same ThunderInterfaces as the PR run uses (checked out here fresh)
+            git clone "https://github.com/rdkcentral/ThunderInterfaces.git" ThunderInterfaces
+
+            python -m pip install --upgrade pip
+            python -m pip install PyYAML
+
+            INTERFACES_H="${PWD}/ThunderInterfaces/interfaces/IMath.h"
+
+            mkdir -p base_generated
+            (
+              cd base_generated
+              gen() {
+                local variant="$1" q2="$2"
+                printf '%s\n' "$variant" "$q2" "N" "$INTERFACES_H" "" "N" "" \
+                  | python ../base_repo/PluginSkeletonGenerator/PluginSkeletonGenerator.py
+              }
+              gen InProcess N
+              gen OutOfProcess Y
+            )
+
+            mkdir -p diffs "site/$DEST_DIR/diff"
+
+            # Directory diffs (don't fail the step if there are differences)
+            git diff --no-index -- base_generated/InProcess  artifacts/PluginSkeleton-InProcess   > diffs/InProcess.diff  || true
+            git diff --no-index -- base_generated/OutOfProcess artifacts/PluginSkeleton-OutOfProcess > diffs/OutOfProcess.diff || true
+
+            # Render diff -> HTML
+            npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/InProcess.html"   -- diffs/InProcess.diff
+            npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/OutOfProcess.html" -- diffs/OutOfProcess.diff
+
+            # Also publish raw diffs
+            cp -a diffs/*.diff "site/$DEST_DIR/diff/"
+
+            cat > "site/$DEST_DIR/diff/index.html" <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <h1>Generated diff vs PR base (master)</h1>
+          <ul>
+            <li><a href="./InProcess.html">InProcess (HTML)</a> | <a href="./InProcess.diff">raw diff</a></li>
+            <li><a href="./OutOfProcess.html">OutOfProcess (HTML)</a> | <a href="./OutOfProcess.diff">raw diff</a></li>
+          </ul>
+          HTML
+          fi
+
+          # Create folder indexes everywhere so browsing directories in Pages doesn't 404
           python - <<'PY'
           from pathlib import Path
           import html, os
@@ -127,15 +199,52 @@ jobs:
               (dir_path / "index.html").write_text("\n".join(lines), encoding="utf-8")
 
           def walk(root: Path):
+              if not root.exists():
+                  return
               for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
                   write_index(d)
 
           dest = Path("site") / os.environ["DEST_DIR"]
           walk(dest / "InProcess")
           walk(dest / "OutOfProcess")
+          walk(dest / "diff")
           PY
 
-      - name: Deploy to gh-pages
+          # Landing page for this preview
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            DIFF_LINK='<li><a href="./diff/">Diff vs PR base</a></li>'
+          else
+            DIFF_LINK=''
+          fi
+
+          cat > "site/$DEST_DIR/index.html" <<HTML
+          <!doctype html>
+          <html>
+            <head><meta charset="utf-8"><title>PluginSkeletonGenerator output</title></head>
+            <body>
+              <h1>PluginSkeletonGenerator output</h1>
+              <ul>
+                <li><a href="./InProcess/">InProcess</a></li>
+                <li><a href="./OutOfProcess/">OutOfProcess</a></li>
+                ${DIFF_LINK}
+              </ul>
+            </body>
+          </html>
+          HTML
+
+          # Root index (nice entry point)
+          mkdir -p site
+          cat > "site/index.html" <<'HTML'
+          <!doctype html>
+          <meta charset="utf-8">
+          <h1>ThunderTools PluginSkeletonGenerator previews</h1>
+          <ul>
+            <li><a href="./master/latest/">master/latest</a></li>
+            <li><a href="./previews/">previews/</a></li>
+          </ul>
+          HTML
+
+      - name: Deploy to gh-pages (keep other previews)
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -152,3 +261,6 @@ jobs:
           body: |
             Plugin skeleton preview published:
             https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.DEST_DIR }}/
+
+            Diff vs PR base (master):
+            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.DEST_DIR }}/diff/
