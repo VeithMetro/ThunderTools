@@ -36,7 +36,7 @@ namespace Plugin {
         ~{{PLUGIN_NAME}}Implementation() override = default;
         
     {{CONFIG_CLASS}}
-    public:
+    public: 
 
         BEGIN_INTERFACE_MAP({{PLUGIN_NAME}}Implementation)
         {{HEADER_INTERFACE_ENTRY}}
