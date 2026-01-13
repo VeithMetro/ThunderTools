@@ -120,6 +120,9 @@ jobs:
 
           mkdir -p "site/$DEST_DIR"
 
+          # Make sure GitHub Pages serves underscore-prefixed folders like _assets/
+          touch site/.nojekyll
+
           # Copy outputs into Pages structure
           cp -a artifacts/PluginSkeleton-InProcess    "site/$DEST_DIR/InProcess"
           cp -a artifacts/PluginSkeleton-OutOfProcess "site/$DEST_DIR/OutOfProcess"
