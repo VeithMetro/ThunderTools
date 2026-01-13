@@ -162,9 +162,6 @@ jobs:
             # Render diff -> HTML (diff2html-cli supports -i file and -F output file) [web:160]
             npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/InProcess.html"   -- diffs/InProcess.diff
             npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/OutOfProcess.html" -- diffs/OutOfProcess.diff
-
-            # Also publish raw diffs
-            cp -a diffs/*.diff "site/$DEST_DIR/diff/"
           fi
 
           # ------------------------------------------------------------
