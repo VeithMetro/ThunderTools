@@ -95,18 +95,18 @@ jobs:
             DEST_DIR="master/latest"
           fi
 
+          export DEST_DIR
           echo "DEST_DIR=$DEST_DIR" >> "$GITHUB_ENV"
 
-          mkdir -p site
           mkdir -p "site/$DEST_DIR"
 
-          cp -a artifacts/PluginSkeleton-InProcess  "site/$DEST_DIR/InProcess"
+          cp -a artifacts/PluginSkeleton-InProcess   "site/$DEST_DIR/InProcess"
           cp -a artifacts/PluginSkeleton-OutOfProcess "site/$DEST_DIR/OutOfProcess"
 
           python - <<'PY'
           from pathlib import Path
-          import html
-          
+          import html, os
+
           def write_index(dir_path: Path):
               entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
               lines = [
@@ -115,42 +115,25 @@ jobs:
                   f"<title>{html.escape(dir_path.name)}</title>",
                   f"<h1>{html.escape(dir_path.name)}</h1>",
                   "<ul>",
+                  "<li><a href='../'>../</a></li>",
               ]
-              lines.append("<li><a href='../'>../</a></li>")
-          
               for p in entries:
                   if p.name == "index.html":
                       continue
                   name = p.name + ("/" if p.is_dir() else "")
                   href = p.name + ("/" if p.is_dir() else "")
                   lines.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
-          
-              lines += ["</ul>"]
+              lines.append("</ul>")
               (dir_path / "index.html").write_text("\n".join(lines), encoding="utf-8")
-          
+
           def walk(root: Path):
               for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
                   write_index(d)
-          
-          site = Path("site")
-          dest = Path("site") / Path(__import__("os").environ["DEST_DIR"])
+
+          dest = Path("site") / os.environ["DEST_DIR"]
           walk(dest / "InProcess")
           walk(dest / "OutOfProcess")
           PY
-
-          cat > "site/$DEST_DIR/index.html" <<'HTML'
-          <!doctype html>
-          <html>
-            <head><meta charset="utf-8"><title>PluginSkeletonGenerator output</title></head>
-            <body>
-              <h1>PluginSkeletonGenerator output</h1>
-              <ul>
-                <li><a href="./InProcess/">InProcess</a></li>
-                <li><a href="./OutOfProcess/">OutOfProcess</a></li>
-              </ul>
-            </body>
-          </html>
-          HTML
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
