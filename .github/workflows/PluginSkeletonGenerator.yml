@@ -22,16 +22,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Define generator variants (single source of truth)
+        id: set-matrix
+        shell: python
+        run: |
+          import json, os
+
+          # Edit only this list to add/change build types and their answers.
+          # Each variant can use a different interface header (e.g. IMath.h vs IBrowser.h).
+          #
+          # "__INTERFACES_H__" is a placeholder that will be replaced at runtime with:
+          #   $GITHUB_WORKSPACE/ThunderInterfaces/interfaces/<header>
+          variants = [
+            {
+              "name": "InProcess",
+              "header": "IMath.h",
+              "answers": ["InProcess", "N", "N", "__INTERFACES_H__", "", "N", ""],
+            },
+            {
+              "name": "OutOfProcess",
+              "header": "IBrowser.h",
+              "answers": ["OutOfProcess", "Y", "N", "__INTERFACES_H__", "", "N", ""],
+            },
+          ]
+
+          include = []
+          for v in variants:
+            stdin = "\n".join(v["answers"]) + "\n"
+            include.append({"name": v["name"], "header": v["header"], "stdin": stdin})
+
+          matrix = json.dumps({"include": include})
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+            f.write(f"matrix={matrix}\n")
+
   generate:
     runs-on: ubuntu-latest
+    needs: [ prepare ]
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - variant: InProcess
-            q2: "N"
-          - variant: OutOfProcess
-            q2: "Y"
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
 
     steps:
       - name: Checkout this repo
@@ -56,32 +90,28 @@ jobs:
       - name: Run PluginSkeletonGenerator
         shell: bash
         env:
-          INTERFACES_H: ${{ github.workspace }}/ThunderInterfaces/interfaces/IMath.h
+          HEADER: ${{ matrix.header }}
+          VARIANT_STDIN: ${{ matrix.stdin }}
         run: |
           set -euo pipefail
           mkdir -p generated
           cd generated
 
-          printf '%s\n' \
-            "${{ matrix.variant }}" \
-            "${{ matrix.q2 }}" \
-            "N" \
-            "${INTERFACES_H}" \
-            "" \
-            "N" \
-            "" \
-          | python ../PluginSkeletonGenerator/PluginSkeletonGenerator.py
+          INTERFACES_H="${GITHUB_WORKSPACE}/ThunderInterfaces/interfaces/${HEADER}"
+          STDIN="${VARIANT_STDIN/__INTERFACES_H__/${INTERFACES_H}}"
+
+          printf '%b' "$STDIN" | python ../PluginSkeletonGenerator/PluginSkeletonGenerator.py
 
       - name: Upload generated variant as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PluginSkeleton-${{ matrix.variant }}
-          path: generated/${{ matrix.variant }}/
+          name: PluginSkeleton-${{ matrix.name }}
+          path: generated/${{ matrix.name }}/
           compression-level: 9
 
   publish_pages:
     runs-on: ubuntu-latest
-    needs: [ generate ]
+    needs: [ prepare, generate ]
 
     # Avoid trying to push to gh-pages / comment when PR comes from a fork.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -104,6 +134,8 @@ jobs:
 
       - name: Build static preview site (and diff for PRs)
         shell: bash
+        env:
+          MATRIX_JSON: ${{ needs.prepare.outputs.matrix }}
         run: |
           set -euo pipefail
 
@@ -114,23 +146,28 @@ jobs:
           fi
 
           RUN_DIR="${BASE_DIR}/run-${{ github.run_id }}"
-
           export BASE_DIR RUN_DIR
           echo "BASE_DIR=$BASE_DIR" >> "$GITHUB_ENV"
           echo "RUN_DIR=$RUN_DIR" >> "$GITHUB_ENV"
 
           mkdir -p "site/$RUN_DIR"
 
-          # Disable Jekyll processing (safe default for generated content). [web:201]
+          # Disable Jekyll processing (safe default for generated content).
           touch site/.nojekyll
 
-          # Copy outputs into Pages structure (run-versioned)
-          cp -a artifacts/PluginSkeleton-InProcess     "site/$RUN_DIR/InProcess"
-          cp -a artifacts/PluginSkeleton-OutOfProcess  "site/$RUN_DIR/OutOfProcess"
+          # ---- Copy all generated variants (no hard-coded names) ----
+          python - <<'PY' > variant_names.txt
+          import json, os
+          m = json.loads(os.environ["MATRIX_JSON"])
+          for item in m["include"]:
+            print(item["name"])
+          PY
 
-          # ---------------------------------------
-          # PR-only: baseline generation + diffs
-          # ---------------------------------------
+          while read -r name; do
+            cp -a "artifacts/PluginSkeleton-${name}" "site/$RUN_DIR/${name}"
+          done < variant_names.txt
+
+          # ---- PR-only: baseline generation + diffs (HTML only) ----
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             git clone --no-checkout "https://github.com/${{ github.repository }}.git" base_repo
             git -C base_repo checkout --detach "${{ github.event.pull_request.base.sha }}"
@@ -139,33 +176,31 @@ jobs:
             python -m pip install --upgrade pip
             python -m pip install PyYAML
 
-            INTERFACES_H="${PWD}/ThunderInterfaces/interfaces/IMath.h"
+            mkdir -p base_generated diffs "site/$RUN_DIR/diff"
 
-            mkdir -p base_generated
-            (
-              cd base_generated
-              gen() {
-                local variant="$1" q2="$2"
-                printf '%s\n' "$variant" "$q2" "N" "$INTERFACES_H" "" "N" "" \
-                  | python ../base_repo/PluginSkeletonGenerator/PluginSkeletonGenerator.py
-              }
-              gen InProcess N
-              gen OutOfProcess Y
-            )
+            python - <<'PY' > variant_stdin.tsv
+          import json, os
+          m = json.loads(os.environ["MATRIX_JSON"])
+          for item in m["include"]:
+            # name \t header \t stdin
+            print(item["name"] + "\t" + item["header"] + "\t" + item["stdin"])
+          PY
 
-            mkdir -p diffs "site/$RUN_DIR/diff"
+            while IFS=$'\t' read -r name header stdin; do
+              INTERFACES_H="${PWD}/ThunderInterfaces/interfaces/${header}"
 
-            git diff --no-index -- base_generated/InProcess    artifacts/PluginSkeleton-InProcess      > diffs/InProcess.diff   || true
-            git diff --no-index -- base_generated/OutOfProcess artifacts/PluginSkeleton-OutOfProcess > diffs/OutOfProcess.diff || true
+              (
+                cd base_generated
+                STDIN="${stdin/__INTERFACES_H__/${INTERFACES_H}}"
+                printf '%b' "$STDIN" | python ../base_repo/PluginSkeletonGenerator/PluginSkeletonGenerator.py
+              )
 
-            # diff2html-cli can render a diff file to an HTML file. [web:160]
-            npx --yes diff2html-cli@5.2.15 -i file -F "site/$RUN_DIR/diff/InProcess.html"    -- diffs/InProcess.diff
-            npx --yes diff2html-cli@5.2.15 -i file -F "site/$RUN_DIR/diff/OutOfProcess.html" -- diffs/OutOfProcess.diff
+              git diff --no-index -- "base_generated/$name" "artifacts/PluginSkeleton-$name" > "diffs/$name.diff" || true
+              npx --yes diff2html-cli@5.2.15 -i file -F "site/$RUN_DIR/diff/$name.html" -- "diffs/$name.diff"
+            done < variant_stdin.tsv
           fi
 
-          # ---------------------------------------
-          # Dark theme CSS (stored in run dir)
-          # ---------------------------------------
+          # ---- Dark theme CSS ----
           mkdir -p "site/$RUN_DIR/assets"
           cat > "site/$RUN_DIR/assets/style.css" <<'CSS'
           :root{
@@ -182,92 +217,64 @@ jobs:
           h1{font-size:28px;margin:18px 0}
           CSS
 
-          # ---------------------------------------
-          # Hub page for this run
-          # ---------------------------------------
-          DIFF_ITEM=""
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            DIFF_ITEM='<li><a href="./diff/">Diff vs PR base</a></li>'
-          fi
-
-          cat > "site/$RUN_DIR/index.html" <<HTML
-          <!doctype html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>PluginSkeletonGenerator preview</title>
-              <link rel="stylesheet" href="./assets/style.css">
-            </head>
-            <body>
-              <div class="nav">
-                <a href="./">Preview</a>
-                <a href="./InProcess/">InProcess</a>
-                <a href="./OutOfProcess/">OutOfProcess</a>
-                <a href="./diff/">Diff</a>
-              </div>
-              <div class="container">
-                <h1>PluginSkeletonGenerator output</h1>
-                <ul>
-                  <li><a href="./InProcess/">Browse InProcess</a></li>
-                  <li><a href="./OutOfProcess/">Browse OutOfProcess</a></li>
-                  ${DIFF_ITEM}
-                </ul>
-              </div>
-            </body>
-          </html>
-          HTML
-
-          # ---------------------------------------
-          # Generate index.html in every directory + inject nav + CSS
-          # Also post-process diff2html pages to include nav + themed CSS
-          # ---------------------------------------
+          # ---- Build hub + folder indexes + patch diff HTML with nav/CSS ----
           python - <<'PY'
           from pathlib import Path
-          import html, os, re
+          import html, json, os, re
+
+          matrix = json.loads(os.environ["MATRIX_JSON"])
+          variants = [i["name"] for i in matrix["include"]]
 
           run_root = Path("site") / os.environ["RUN_DIR"]
-
-          def rel_to_root(dir_path: Path) -> str:
-            rel = dir_path.relative_to(run_root)
-            depth = len(rel.parts)
-            return "./" if depth == 0 else "../" * depth
+          css_root = "./assets/style.css"
 
           def nav(home: str) -> str:
-            return (
-              f"<a href='{home}'>Preview</a>"
-              f"<a href='{home}InProcess/'>InProcess</a>"
-              f"<a href='{home}OutOfProcess/'>OutOfProcess</a>"
-              f"<a href='{home}diff/'>Diff</a>"
-            )
+            links = [f"<a href='{home}'>Preview</a>"]
+            for v in variants:
+              links.append(f"<a href='{home}{html.escape(v)}/'>{html.escape(v)}</a>")
+            links.append(f"<a href='{home}diff/'>Diff</a>")
+            return "".join(links)
 
-          def wrap(title: str, nav_html: str, body_html: str, css_href: str) -> str:
+          def wrap(title: str, home: str, body_html: str, css_href: str) -> str:
             return "\n".join([
               "<!doctype html>",
               "<html><head><meta charset='utf-8'>",
               f"<title>{html.escape(title)}</title>",
               f"<link rel='stylesheet' href='{html.escape(css_href)}'>",
               "</head><body>",
-              f"<div class='nav'>{nav_html}</div>",
+              f"<div class='nav'>{nav(home)}</div>",
               "<div class='container'>",
               body_html,
               "</div></body></html>",
             ])
 
+          # Hub page
+          items = ["<h1>PluginSkeletonGenerator output</h1><ul>"]
+          for v in variants:
+            items.append(f"<li><a href='./{html.escape(v)}/'>Browse {html.escape(v)}</a></li>")
+          if (run_root / "diff").exists():
+            items.append("<li><a href='./diff/'>Diff vs PR base</a></li>")
+          items.append("</ul>")
+          (run_root / "index.html").write_text(wrap("Preview", "./", "\n".join(items), css_root), encoding="utf-8")
+
+          def rel_home(dir_path: Path) -> str:
+            rel = dir_path.relative_to(run_root)
+            depth = len(rel.parts)
+            return "./" if depth == 0 else "../" * depth
+
           def write_dir_index(dir_path: Path):
-            home = rel_to_root(dir_path)
+            home = rel_home(dir_path)
             css_href = f"{home}assets/style.css"
-            nav_html = nav(home)
             entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
-            items = ["<ul>", f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
+            lst = ["<h1>%s</h1><ul>" % html.escape(dir_path.name), f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
             for p in entries:
               if p.name == "index.html":
                 continue
               name = p.name + ("/" if p.is_dir() else "")
               href = p.name + ("/" if p.is_dir() else "")
-              items.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
-            items.append("</ul>")
-            body = f"<h1>{html.escape(dir_path.name)}</h1>\n" + "\n".join(items)
-            (dir_path / "index.html").write_text(wrap(dir_path.name, nav_html, body, css_href), encoding="utf-8")
+              lst.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
+            lst.append("</ul>")
+            (dir_path / "index.html").write_text(wrap(dir_path.name, home, "\n".join(lst), css_href), encoding="utf-8")
 
           def walk(root: Path):
             if not root.exists():
@@ -275,43 +282,40 @@ jobs:
             for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
               write_dir_index(d)
 
-          walk(run_root / "InProcess")
-          walk(run_root / "OutOfProcess")
+          for v in variants:
+            walk(run_root / v)
           walk(run_root / "diff")
 
-          # Create diff folder index (HTML only)
+          # Diff index (HTML only)
           diff_dir = run_root / "diff"
           if diff_dir.exists():
-            home = rel_to_root(diff_dir)
+            home = rel_home(diff_dir)
             css_href = f"{home}assets/style.css"
-            nav_html = nav(home)
-            body = "<h1>Diff</h1><ul><li><a href='./InProcess.html'>InProcess</a></li><li><a href='./OutOfProcess.html'>OutOfProcess</a></li></ul>"
-            (diff_dir / "index.html").write_text(wrap("Diff", nav_html, body, css_href), encoding="utf-8")
+            body = "<h1>Diff</h1><ul>" + "".join(
+              f"<li><a href='./{html.escape(v)}.html'>{html.escape(v)}</a></li>" for v in variants
+            ) + "</ul>"
+            (diff_dir / "index.html").write_text(wrap("Diff", home, body, css_href), encoding="utf-8")
 
-          # Patch diff2html HTML pages (inject our CSS link + nav)
-          for diff_html in [run_root / "diff" / "InProcess.html", run_root / "diff" / "OutOfProcess.html"]:
-            if not diff_html.exists():
+          # Patch diff2html pages: inject our CSS + nav wrapper
+          for v in variants:
+            p = diff_dir / f"{v}.html"
+            if not p.exists():
               continue
-
-            home = rel_to_root(diff_html.parent)
+            home = rel_home(p.parent)
             css_href = f"{home}assets/style.css"
-            nav_html = nav(home)
-
-            txt = diff_html.read_text(encoding="utf-8")
+            txt = p.read_text(encoding="utf-8")
 
             if css_href not in txt:
               txt = re.sub(r"</head>", f"  <link rel='stylesheet' href='{css_href}'>\n</head>", txt, count=1, flags=re.I)
 
             if "class='nav'" not in txt and 'class="nav"' not in txt:
-              txt = re.sub(r"<body[^>]*>", lambda m: m.group(0) + f"\n<div class='nav'>{nav_html}</div>\n<div class='container'>", txt, count=1, flags=re.I)
+              txt = re.sub(r"<body[^>]*>", lambda m: m.group(0) + f"\n<div class='nav'>{nav(home)}</div>\n<div class='container'>", txt, count=1, flags=re.I)
               txt = re.sub(r"</body>", "</div>\n</body>", txt, count=1, flags=re.I)
 
-            diff_html.write_text(txt, encoding="utf-8")
+            p.write_text(txt, encoding="utf-8")
           PY
 
-          # ---------------------------------------
-          # Stable pointer page: /previews/pr-X/ -> latest run
-          # ---------------------------------------
+          # ---- Stable pointer page: /previews/pr-X/ -> latest run ----
           mkdir -p "site/$BASE_DIR"
           cat > "site/$BASE_DIR/index.html" <<HTML
           <!doctype html>
