@@ -1,9 +1,9 @@
 {
   "$schema": "plugin.schema.json",
   "info": {
-    "title": "OutOfProcess Plugin",
-    "callsign": "OutOfProcess",
-    "locator": "libThunderOutOfProcess.so",
+    "title": "InProcess Plugin",
+    "callsign": "InProcess",
+    "locator": "libThunderInProcess.so",
     "status": "development",
     "description": [
       ""
@@ -11,6 +11,6 @@
     "version": "1.0"
   },
   "interface": {
-    "$cppref": "{cppinterfacedir}/IBrowser.h"
+    "$cppref": "{cppinterfacedir}/IMath.h"
   }
 }
