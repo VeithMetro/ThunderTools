@@ -1,0 +1,60 @@
+name: Generate plugin skeletons
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - variant: InProcess
+            q2: "N"
+          - variant: OutOfProcess
+            q2: "Y"
+
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Checkout ThunderTools
+        uses: actions/checkout@v4
+        with:
+          path: ThunderTools
+          repository: rdkcentral/ThunderTools
+
+      - name: Checkout ThunderInterfaces
+        uses: actions/checkout@v4
+        with:
+          path: ThunderInterfaces
+          repository: rdkcentral/ThunderInterfaces
+
+      - name: Run PluginSkeletonGenerator
+        shell: bash
+        env:
+          INTERFACES_H: ${{ github.workspace }}/ThunderInterfaces/interfaces/IMath.h
+        run: |
+          set -euo pipefail
+          mkdir -p generated
+          cd generated
+          printf '%s\n' \
+            "${{ matrix.variant }}" \
+            "${{ matrix.q2 }}" \
+            "N" \
+            "${INTERFACES_H}" \
+            "" \
+            "N" \
+            "" \
+          | python ../ThunderTools/PluginSkeletonGenerator/PluginSkeletonGenerator.py
+
+      - name: Upload generated plugin skeleton
+        uses: actions/upload-artifact@v4
+        with:
+          name: PluginSkeleton-${{ matrix.variant }}
+          path: generated/${{ matrix.variant }}/
