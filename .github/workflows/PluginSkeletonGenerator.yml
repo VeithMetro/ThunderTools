@@ -120,22 +120,22 @@ jobs:
 
           mkdir -p "site/$DEST_DIR"
 
-          # Make sure GitHub Pages serves underscore-prefixed folders like _assets/
+          # Ensure Pages doesn't do anything "smart" with special folders if they ever appear
+          # (useful in general; especially if any generator output contains underscore dirs)
           touch site/.nojekyll
 
           # Copy outputs into Pages structure
-          cp -a artifacts/PluginSkeleton-InProcess    "site/$DEST_DIR/InProcess"
-          cp -a artifacts/PluginSkeleton-OutOfProcess "site/$DEST_DIR/OutOfProcess"
+          cp -a artifacts/PluginSkeleton-InProcess     "site/$DEST_DIR/InProcess"
+          cp -a artifacts/PluginSkeleton-OutOfProcess  "site/$DEST_DIR/OutOfProcess"
 
-          # For PRs: generate a baseline from the PR base SHA and create HTML diffs
+          # ------------------------------------------------------------
+          # For PRs: generate baseline from PR base SHA and create diffs
+          # ------------------------------------------------------------
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # Checkout baseline generator code at PR base SHA
             git clone --no-checkout "https://github.com/${{ github.repository }}.git" base_repo
             git -C base_repo checkout --detach "${{ github.event.pull_request.base.sha }}"
 
-            # Same ThunderInterfaces as the PR run uses (checked out here fresh)
             git clone "https://github.com/rdkcentral/ThunderInterfaces.git" ThunderInterfaces
-
             python -m pip install --upgrade pip
             python -m pip install PyYAML
 
@@ -155,32 +155,23 @@ jobs:
 
             mkdir -p diffs "site/$DEST_DIR/diff"
 
-            # Directory diffs (don't fail the step if there are differences)
-            git diff --no-index -- base_generated/InProcess  artifacts/PluginSkeleton-InProcess   > diffs/InProcess.diff  || true
+            # Create unified diffs (git diff --no-index works on plain directories) [web:153]
+            git diff --no-index -- base_generated/InProcess  artifacts/PluginSkeleton-InProcess      > diffs/InProcess.diff  || true
             git diff --no-index -- base_generated/OutOfProcess artifacts/PluginSkeleton-OutOfProcess > diffs/OutOfProcess.diff || true
 
-            # Render diff -> HTML
+            # Render diff -> HTML (diff2html-cli supports -i file and -F output file) [web:160]
             npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/InProcess.html"   -- diffs/InProcess.diff
             npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/OutOfProcess.html" -- diffs/OutOfProcess.diff
 
             # Also publish raw diffs
             cp -a diffs/*.diff "site/$DEST_DIR/diff/"
-
-            cat > "site/$DEST_DIR/diff/index.html" <<'HTML'
-          <!doctype html>
-          <meta charset="utf-8">
-          <h1>Generated diff vs PR base (master)</h1>
-          <ul>
-            <li><a href="./InProcess.html">InProcess (HTML)</a> | <a href="./InProcess.diff">raw diff</a></li>
-            <li><a href="./OutOfProcess.html">OutOfProcess (HTML)</a> | <a href="./OutOfProcess.diff">raw diff</a></li>
-          </ul>
-          HTML
           fi
 
-          # Generate a shared dark CSS and a landing page
-          mkdir -p "site/$DEST_DIR/_assets"
-
-          cat > "site/$DEST_DIR/_assets/style.css" <<'CSS'
+          # ------------------------------------------------------------
+          # Write a single CSS file (no leading underscore folder)
+          # ------------------------------------------------------------
+          mkdir -p "site/$DEST_DIR/assets"
+          cat > "site/$DEST_DIR/assets/style.css" <<'CSS'
           :root{
             color-scheme: dark;
             --bg: #0d1117;
@@ -204,6 +195,7 @@ jobs:
             display:flex; gap:14px; flex-wrap:wrap;
             padding:14px 24px; border-bottom:1px solid var(--border);
             background:rgba(13,17,23,.92); position:sticky; top:0;
+            z-index: 10;
           }
           .nav a{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card)}
           h1{font-size:28px;margin:18px 0}
@@ -211,7 +203,9 @@ jobs:
           .small{color:var(--muted);font-size:14px}
           CSS
 
-          # Preview landing page (single hub)
+          # ------------------------------------------------------------
+          # Hub page for this preview (single place to navigate)
+          # ------------------------------------------------------------
           DIFF_ITEM=""
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             DIFF_ITEM='<li><a href="./diff/">Diff vs PR base</a></li>'
@@ -223,7 +217,7 @@ jobs:
             <head>
               <meta charset="utf-8">
               <title>PluginSkeletonGenerator preview</title>
-              <link rel="stylesheet" href="./_assets/style.css">
+              <link rel="stylesheet" href="./assets/style.css">
             </head>
             <body>
               <div class="nav">
@@ -239,105 +233,108 @@ jobs:
                   <li><a href="./OutOfProcess/">Browse OutOfProcess</a></li>
                   ${DIFF_ITEM}
                 </ul>
-                <p class="small">
-                  Tip: use the nav bar to move between Preview / Outputs / Diff.
-                </p>
+                <p class="small">Use the nav bar to move freely between Preview / Outputs / Diff.</p>
               </div>
             </body>
           </html>
           HTML
 
-          # Create folder indexes everywhere so browsing directories in Pages doesn't 404
+          # ------------------------------------------------------------
+          # Generate index.html in every directory + inject nav + CSS links
+          # Also post-process diff2html output to include the same CSS + nav
+          # ------------------------------------------------------------
           python - <<'PY'
           from pathlib import Path
-          import html, os
+          import html, os, re
 
           DEST_DIR = os.environ["DEST_DIR"]
-          dest_root = Path("site") / DEST_DIR
+          root = Path("site") / DEST_DIR
+          css_at_root = root / "assets" / "style.css"
+          css_text = css_at_root.read_text(encoding="utf-8")
 
-          def rel_home(dir_path: Path) -> str:
-              # Number of path segments from dest_root to this directory
-              rel = dir_path.relative_to(dest_root)
-              depth = len(rel.parts)
-              return "./" if depth == 0 else "../" * depth
+          def rel_to_root(dir_path: Path) -> str:
+            rel = dir_path.relative_to(root)
+            depth = len(rel.parts)
+            return "./" if depth == 0 else "../" * depth
 
-          def page(title: str, nav_html: str, body_html: str, css_href: str) -> str:
-              return "\n".join([
-                  "<!doctype html>",
-                  "<html>",
-                  "  <head>",
-                  "    <meta charset='utf-8'>",
-                  f"    <title>{html.escape(title)}</title>",
-                  f"    <link rel='stylesheet' href='{html.escape(css_href)}'>",
-                  "  </head>",
-                  "  <body>",
-                  f"    <div class='nav'>{nav_html}</div>",
-                  "    <div class='container'>",
-                  f"{body_html}",
-                  "    </div>",
-                  "  </body>",
-                  "</html>",
-              ])
+          def nav(home: str) -> str:
+            return (
+              f"<a href='{home}'>Preview</a>"
+              f"<a href='{home}InProcess/'>InProcess</a>"
+              f"<a href='{home}OutOfProcess/'>OutOfProcess</a>"
+              f"<a href='{home}diff/'>Diff</a>"
+            )
 
-          def write_index(dir_path: Path):
-              home = rel_home(dir_path)
-              css_href = f"{home}_assets/style.css"
-              diff_link = f"{home}diff/"  # ok if missing on master; link just won't exist
-              nav = (
-                  f"<a href='{home}'>Preview</a>"
-                  f"<a href='{home}InProcess/'>InProcess</a>"
-                  f"<a href='{home}OutOfProcess/'>OutOfProcess</a>"
-                  f"<a href='{diff_link}'>Diff</a>"
-              )
+          def wrap_page(title: str, nav_html: str, body_html: str, css_href: str) -> str:
+            return "\n".join([
+              "<!doctype html>",
+              "<html>",
+              "  <head>",
+              "    <meta charset='utf-8'>",
+              f"    <title>{html.escape(title)}</title>",
+              f"    <link rel='stylesheet' href='{html.escape(css_href)}'>",
+              "  </head>",
+              "  <body>",
+              f"    <div class='nav'>{nav_html}</div>",
+              "    <div class='container'>",
+              f"{body_html}",
+              "    </div>",
+              "  </body>",
+              "</html>",
+            ])
 
-              entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
-              items = ["<ul>", f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
-              for p in entries:
-                  if p.name == "index.html":
-                      continue
-                  name = p.name + ("/" if p.is_dir() else "")
-                  href = p.name + ("/" if p.is_dir() else "")
-                  items.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
-              items.append("</ul>")
+          def write_dir_index(dir_path: Path):
+            home = rel_to_root(dir_path)
+            css_href = f"{home}assets/style.css"
+            nav_html = nav(home)
 
-              body = f"<h1>{html.escape(dir_path.name)}</h1>\n" + "\n".join(items)
-              (dir_path / "index.html").write_text(page(dir_path.name, nav, body, css_href), encoding="utf-8")
+            entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+            items = ["<ul>", f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
+            for p in entries:
+              if p.name == "index.html":
+                continue
+              name = p.name + ("/" if p.is_dir() else "")
+              href = p.name + ("/" if p.is_dir() else "")
+              items.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
+            items.append("</ul>")
 
-          def walk(root: Path):
-              if not root.exists():
-                  return
-              for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
-                  write_index(d)
+            body = f"<h1>{html.escape(dir_path.name)}</h1>\n" + "\n".join(items)
+            (dir_path / "index.html").write_text(wrap_page(dir_path.name, nav_html, body, css_href), encoding="utf-8")
 
-          walk(dest_root / "InProcess")
-          walk(dest_root / "OutOfProcess")
-          walk(dest_root / "diff")
+          def walk_and_index(start: Path):
+            if not start.exists():
+              return
+            for d in [start] + [p for p in start.rglob("*") if p.is_dir()]:
+              write_dir_index(d)
+
+          walk_and_index(root / "InProcess")
+          walk_and_index(root / "OutOfProcess")
+          walk_and_index(root / "diff")
+
+          # Post-process diff2html HTML pages to include our CSS + nav
+          for diff_html in [root / "diff" / "InProcess.html", root / "diff" / "OutOfProcess.html"]:
+            if not diff_html.exists():
+              continue
+
+            home = rel_to_root(diff_html.parent)
+            css_href = f"{home}assets/style.css"
+            nav_html = nav(home)
+
+            txt = diff_html.read_text(encoding="utf-8")
+
+            # Ensure our CSS is present (diff2html already ships its own, but this adds overall page theme)
+            if css_href not in txt:
+              txt = re.sub(r"</head>", f"  <link rel='stylesheet' href='{css_href}'>\n</head>", txt, count=1, flags=re.I)
+
+            # Inject nav + container wrapper (best-effort, works for typical diff2html output)
+            if "class='nav'" not in txt and 'class="nav"' not in txt:
+              txt = re.sub(r"<body[^>]*>", lambda m: m.group(0) + f"\n<div class='nav'>{nav_html}</div>\n<div class='container'>", txt, count=1, flags=re.I)
+              txt = re.sub(r"</body>", "</div>\n</body>", txt, count=1, flags=re.I)
+
+            diff_html.write_text(txt, encoding="utf-8")
           PY
 
-          # Landing page for this preview
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            DIFF_LINK='<li><a href="./diff/">Diff vs PR base</a></li>'
-          else
-            DIFF_LINK=''
-          fi
-
-          cat > "site/$DEST_DIR/index.html" <<HTML
-          <!doctype html>
-          <html>
-            <head><meta charset="utf-8"><title>PluginSkeletonGenerator output</title></head>
-            <body>
-              <h1>PluginSkeletonGenerator output</h1>
-              <ul>
-                <li><a href="./InProcess/">InProcess</a></li>
-                <li><a href="./OutOfProcess/">OutOfProcess</a></li>
-                ${DIFF_LINK}
-              </ul>
-            </body>
-          </html>
-          HTML
-
-          # Root index (nice entry point)
-          mkdir -p site
+          # Root landing page for whole Pages site (optional but nice)
           cat > "site/index.html" <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
