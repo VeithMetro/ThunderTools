@@ -174,29 +174,131 @@ jobs:
           HTML
           fi
 
+          # Generate a shared dark CSS and a landing page
+          mkdir -p "site/$DEST_DIR/_assets"
+
+          cat > "site/$DEST_DIR/_assets/style.css" <<'CSS'
+          :root{
+            color-scheme: dark;
+            --bg: #0d1117;
+            --fg: #c9d1d9;
+            --muted: #8b949e;
+            --link: #58a6ff;
+            --border: #30363d;
+            --card: #161b22;
+          }
+          html,body{height:100%}
+          body{
+            margin:0;
+            font: 18px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+            background:var(--bg);
+            color:var(--fg);
+          }
+          a{color:var(--link);text-decoration:none}
+          a:hover{text-decoration:underline}
+          .container{max-width:1100px;margin:0 auto;padding:24px}
+          .nav{
+            display:flex; gap:14px; flex-wrap:wrap;
+            padding:14px 24px; border-bottom:1px solid var(--border);
+            background:rgba(13,17,23,.92); position:sticky; top:0;
+          }
+          .nav a{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card)}
+          h1{font-size:28px;margin:18px 0}
+          ul{margin:10px 0 0 20px}
+          .small{color:var(--muted);font-size:14px}
+          CSS
+
+          # Preview landing page (single hub)
+          DIFF_ITEM=""
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            DIFF_ITEM='<li><a href="./diff/">Diff vs PR base</a></li>'
+          fi
+
+          cat > "site/$DEST_DIR/index.html" <<HTML
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>PluginSkeletonGenerator preview</title>
+              <link rel="stylesheet" href="./_assets/style.css">
+            </head>
+            <body>
+              <div class="nav">
+                <a href="./">Preview</a>
+                <a href="./InProcess/">InProcess</a>
+                <a href="./OutOfProcess/">OutOfProcess</a>
+                <a href="./diff/">Diff</a>
+              </div>
+              <div class="container">
+                <h1>PluginSkeletonGenerator output</h1>
+                <ul>
+                  <li><a href="./InProcess/">Browse InProcess</a></li>
+                  <li><a href="./OutOfProcess/">Browse OutOfProcess</a></li>
+                  ${DIFF_ITEM}
+                </ul>
+                <p class="small">
+                  Tip: use the nav bar to move between Preview / Outputs / Diff.
+                </p>
+              </div>
+            </body>
+          </html>
+          HTML
+
           # Create folder indexes everywhere so browsing directories in Pages doesn't 404
           python - <<'PY'
           from pathlib import Path
           import html, os
 
-          def write_index(dir_path: Path):
-              entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
-              lines = [
+          DEST_DIR = os.environ["DEST_DIR"]
+          dest_root = Path("site") / DEST_DIR
+
+          def rel_home(dir_path: Path) -> str:
+              # Number of path segments from dest_root to this directory
+              rel = dir_path.relative_to(dest_root)
+              depth = len(rel.parts)
+              return "./" if depth == 0 else "../" * depth
+
+          def page(title: str, nav_html: str, body_html: str, css_href: str) -> str:
+              return "\n".join([
                   "<!doctype html>",
-                  "<meta charset='utf-8'>",
-                  f"<title>{html.escape(dir_path.name)}</title>",
-                  f"<h1>{html.escape(dir_path.name)}</h1>",
-                  "<ul>",
-                  "<li><a href='../'>../</a></li>",
-              ]
+                  "<html>",
+                  "  <head>",
+                  "    <meta charset='utf-8'>",
+                  f"    <title>{html.escape(title)}</title>",
+                  f"    <link rel='stylesheet' href='{html.escape(css_href)}'>",
+                  "  </head>",
+                  "  <body>",
+                  f"    <div class='nav'>{nav_html}</div>",
+                  "    <div class='container'>",
+                  f"{body_html}",
+                  "    </div>",
+                  "  </body>",
+                  "</html>",
+              ])
+
+          def write_index(dir_path: Path):
+              home = rel_home(dir_path)
+              css_href = f"{home}_assets/style.css"
+              diff_link = f"{home}diff/"  # ok if missing on master; link just won't exist
+              nav = (
+                  f"<a href='{home}'>Preview</a>"
+                  f"<a href='{home}InProcess/'>InProcess</a>"
+                  f"<a href='{home}OutOfProcess/'>OutOfProcess</a>"
+                  f"<a href='{diff_link}'>Diff</a>"
+              )
+
+              entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+              items = ["<ul>", f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
               for p in entries:
                   if p.name == "index.html":
                       continue
                   name = p.name + ("/" if p.is_dir() else "")
                   href = p.name + ("/" if p.is_dir() else "")
-                  lines.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
-              lines.append("</ul>")
-              (dir_path / "index.html").write_text("\n".join(lines), encoding="utf-8")
+                  items.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
+              items.append("</ul>")
+
+              body = f"<h1>{html.escape(dir_path.name)}</h1>\n" + "\n".join(items)
+              (dir_path / "index.html").write_text(page(dir_path.name, nav, body, css_href), encoding="utf-8")
 
           def walk(root: Path):
               if not root.exists():
@@ -204,10 +306,9 @@ jobs:
               for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
                   write_index(d)
 
-          dest = Path("site") / os.environ["DEST_DIR"]
-          walk(dest / "InProcess")
-          walk(dest / "OutOfProcess")
-          walk(dest / "diff")
+          walk(dest_root / "InProcess")
+          walk(dest_root / "OutOfProcess")
+          walk(dest_root / "diff")
           PY
 
           # Landing page for this preview
@@ -252,15 +353,12 @@ jobs:
           publish_dir: ./site
           destination_dir: .
           keep_files: true
-
+      
       - name: Comment PR with Pages link
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
-            Plugin skeleton preview published:
+            Plugin skeleton preview:
             https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.DEST_DIR }}/
-
-            Diff vs PR base (master):
-            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.DEST_DIR }}/diff/
