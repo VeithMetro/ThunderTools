@@ -22,7 +22,7 @@
 namespace Thunder {
 namespace Plugin {
 
-    class {{PLUGIN_NAME}}Implementation {{HEADER_INHERITED_CLASS}} {
+    class {{PLUGIN_NAME}}ImplementationTEST {{HEADER_INHERITED_CLASS}} {
     public:
         {{PLUGIN_NAME}}Implementation(const {{PLUGIN_NAME}}Implementation&) = delete;
         {{PLUGIN_NAME}}Implementation& operator=(const {{PLUGIN_NAME}}Implementation&) = delete;
