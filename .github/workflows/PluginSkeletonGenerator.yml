@@ -13,12 +13,10 @@ on:
       - "PluginSkeletonGenerator/**"
       - ".github/workflows/generate-plugin-skeletons.yml"
 
-# Needed for pushing to gh-pages + PR comments
 permissions:
   contents: write
   pull-requests: write
 
-# Avoid two runs pushing gh-pages at the same time
 concurrency:
   group: pages-previews
   cancel-in-progress: false
@@ -115,13 +113,14 @@ jobs:
             DEST_DIR="master/latest"
           fi
 
-          export DEST_DIR
+          BUILD_ID="${{ github.run_id }}"   # cache-buster token
+          export DEST_DIR BUILD_ID
           echo "DEST_DIR=$DEST_DIR" >> "$GITHUB_ENV"
+          echo "BUILD_ID=$BUILD_ID" >> "$GITHUB_ENV"
 
           mkdir -p "site/$DEST_DIR"
 
-          # Ensure Pages doesn't do anything "smart" with special folders if they ever appear
-          # (useful in general; especially if any generator output contains underscore dirs)
+          # Disable Jekyll processing (safe default for generated content)
           touch site/.nojekyll
 
           # Copy outputs into Pages structure
@@ -155,17 +154,42 @@ jobs:
 
             mkdir -p diffs "site/$DEST_DIR/diff"
 
-            # Create unified diffs (git diff --no-index works on plain directories) [web:153]
-            git diff --no-index -- base_generated/InProcess  artifacts/PluginSkeleton-InProcess      > diffs/InProcess.diff  || true
+            git diff --no-index -- base_generated/InProcess   artifacts/PluginSkeleton-InProcess      > diffs/InProcess.diff   || true
             git diff --no-index -- base_generated/OutOfProcess artifacts/PluginSkeleton-OutOfProcess > diffs/OutOfProcess.diff || true
 
-            # Render diff -> HTML (diff2html-cli supports -i file and -F output file) [web:160]
-            npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/InProcess.html"   -- diffs/InProcess.diff
+            npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/InProcess.html"    -- diffs/InProcess.diff
             npx --yes diff2html-cli@5.2.15 -i file -F "site/$DEST_DIR/diff/OutOfProcess.html" -- diffs/OutOfProcess.diff
+
+            # Only publish HTML (no raw .diff files)
+            cat > "site/$DEST_DIR/diff/index.html" <<HTML
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <title>Diff</title>
+              <link rel="stylesheet" href="../assets/style.css?v=${BUILD_ID}">
+            </head>
+            <body>
+              <div class="nav">
+                <a href="../?v=${BUILD_ID}">Preview</a>
+                <a href="../InProcess/?v=${BUILD_ID}">InProcess</a>
+                <a href="../OutOfProcess/?v=${BUILD_ID}">OutOfProcess</a>
+                <a href="./?v=${BUILD_ID}">Diff</a>
+              </div>
+              <div class="container">
+                <h1>Generated diff vs PR base (master)</h1>
+                <ul>
+                  <li><a href="./InProcess.html?v=${BUILD_ID}">InProcess</a></li>
+                  <li><a href="./OutOfProcess.html?v=${BUILD_ID}">OutOfProcess</a></li>
+                </ul>
+              </div>
+            </body>
+          </html>
+          HTML
           fi
 
           # ------------------------------------------------------------
-          # Write a single CSS file (no leading underscore folder)
+          # Dark theme CSS (no underscore folder)
           # ------------------------------------------------------------
           mkdir -p "site/$DEST_DIR/assets"
           cat > "site/$DEST_DIR/assets/style.css" <<'CSS'
@@ -201,11 +225,11 @@ jobs:
           CSS
 
           # ------------------------------------------------------------
-          # Hub page for this preview (single place to navigate)
+          # Hub page for this preview (single entry point)
           # ------------------------------------------------------------
           DIFF_ITEM=""
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            DIFF_ITEM='<li><a href="./diff/">Diff vs PR base</a></li>'
+            DIFF_ITEM='<li><a href="./diff/?v='"${BUILD_ID}"'">Diff vs PR base</a></li>'
           fi
 
           cat > "site/$DEST_DIR/index.html" <<HTML
@@ -214,52 +238,57 @@ jobs:
             <head>
               <meta charset="utf-8">
               <title>PluginSkeletonGenerator preview</title>
-              <link rel="stylesheet" href="./assets/style.css">
+              <link rel="stylesheet" href="./assets/style.css?v=${BUILD_ID}">
+              <meta http-equiv="cache-control" content="no-cache">
+              <meta http-equiv="pragma" content="no-cache">
+              <meta http-equiv="expires" content="0">
             </head>
             <body>
               <div class="nav">
-                <a href="./">Preview</a>
-                <a href="./InProcess/">InProcess</a>
-                <a href="./OutOfProcess/">OutOfProcess</a>
-                <a href="./diff/">Diff</a>
+                <a href="./?v=${BUILD_ID}">Preview</a>
+                <a href="./InProcess/?v=${BUILD_ID}">InProcess</a>
+                <a href="./OutOfProcess/?v=${BUILD_ID}">OutOfProcess</a>
+                <a href="./diff/?v=${BUILD_ID}">Diff</a>
               </div>
               <div class="container">
                 <h1>PluginSkeletonGenerator output</h1>
                 <ul>
-                  <li><a href="./InProcess/">Browse InProcess</a></li>
-                  <li><a href="./OutOfProcess/">Browse OutOfProcess</a></li>
+                  <li><a href="./InProcess/?v=${BUILD_ID}">Browse InProcess</a></li>
+                  <li><a href="./OutOfProcess/?v=${BUILD_ID}">Browse OutOfProcess</a></li>
                   ${DIFF_ITEM}
                 </ul>
-                <p class="small">Use the nav bar to move freely between Preview / Outputs / Diff.</p>
+                <p class="small">If something looks stale, the URL version token forces a fresh fetch.</p>
               </div>
             </body>
           </html>
           HTML
 
           # ------------------------------------------------------------
-          # Generate index.html in every directory + inject nav + CSS links
-          # Also post-process diff2html output to include the same CSS + nav
+          # Generate index.html in every directory + inject nav + CSS (with ?v=BUILD_ID)
+          # Also post-process diff2html pages to include nav + themed CSS
           # ------------------------------------------------------------
           python - <<'PY'
           from pathlib import Path
           import html, os, re
 
           DEST_DIR = os.environ["DEST_DIR"]
+          BUILD_ID = os.environ.get("BUILD_ID", "0")
           root = Path("site") / DEST_DIR
-          css_at_root = root / "assets" / "style.css"
-          css_text = css_at_root.read_text(encoding="utf-8")
 
           def rel_to_root(dir_path: Path) -> str:
             rel = dir_path.relative_to(root)
             depth = len(rel.parts)
             return "./" if depth == 0 else "../" * depth
 
+          def q() -> str:
+            return f"?v={BUILD_ID}"
+
           def nav(home: str) -> str:
             return (
-              f"<a href='{home}'>Preview</a>"
-              f"<a href='{home}InProcess/'>InProcess</a>"
-              f"<a href='{home}OutOfProcess/'>OutOfProcess</a>"
-              f"<a href='{home}diff/'>Diff</a>"
+              f"<a href='{home}{q()}'>Preview</a>"
+              f"<a href='{home}InProcess/{q()}'>InProcess</a>"
+              f"<a href='{home}OutOfProcess/{q()}'>OutOfProcess</a>"
+              f"<a href='{home}diff/{q()}'>Diff</a>"
             )
 
           def wrap_page(title: str, nav_html: str, body_html: str, css_href: str) -> str:
@@ -282,19 +311,23 @@ jobs:
 
           def write_dir_index(dir_path: Path):
             home = rel_to_root(dir_path)
-            css_href = f"{home}assets/style.css"
+            css_href = f"{home}assets/style.css{q()}"
             nav_html = nav(home)
 
             entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
-            items = ["<ul>", f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
+            items = ["<ul>", f"<li><a href='{home}{q()}'>⟵ Back to preview</a></li>"]
+
             for p in entries:
               if p.name == "index.html":
                 continue
               name = p.name + ("/" if p.is_dir() else "")
               href = p.name + ("/" if p.is_dir() else "")
-              items.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
-            items.append("</ul>")
 
+              # Always append cache-buster to keep navigation fresh
+              href = href + q()
+              items.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
+
+            items.append("</ul>")
             body = f"<h1>{html.escape(dir_path.name)}</h1>\n" + "\n".join(items)
             (dir_path / "index.html").write_text(wrap_page(dir_path.name, nav_html, body, css_href), encoding="utf-8")
 
@@ -308,22 +341,20 @@ jobs:
           walk_and_index(root / "OutOfProcess")
           walk_and_index(root / "diff")
 
-          # Post-process diff2html HTML pages to include our CSS + nav
+          # Patch diff2html HTML pages (inject our CSS link + nav; add ?v=BUILD_ID)
           for diff_html in [root / "diff" / "InProcess.html", root / "diff" / "OutOfProcess.html"]:
             if not diff_html.exists():
               continue
 
             home = rel_to_root(diff_html.parent)
-            css_href = f"{home}assets/style.css"
+            css_href = f"{home}assets/style.css{q()}"
             nav_html = nav(home)
 
             txt = diff_html.read_text(encoding="utf-8")
 
-            # Ensure our CSS is present (diff2html already ships its own, but this adds overall page theme)
             if css_href not in txt:
               txt = re.sub(r"</head>", f"  <link rel='stylesheet' href='{css_href}'>\n</head>", txt, count=1, flags=re.I)
 
-            # Inject nav + container wrapper (best-effort, works for typical diff2html output)
             if "class='nav'" not in txt and 'class="nav"' not in txt:
               txt = re.sub(r"<body[^>]*>", lambda m: m.group(0) + f"\n<div class='nav'>{nav_html}</div>\n<div class='container'>", txt, count=1, flags=re.I)
               txt = re.sub(r"</body>", "</div>\n</body>", txt, count=1, flags=re.I)
@@ -331,7 +362,7 @@ jobs:
             diff_html.write_text(txt, encoding="utf-8")
           PY
 
-          # Root landing page for whole Pages site (optional but nice)
+          # Root site index (optional)
           cat > "site/index.html" <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
@@ -350,12 +381,12 @@ jobs:
           publish_dir: ./site
           destination_dir: .
           keep_files: true
-      
-      - name: Comment PR with Pages link
+
+      - name: Comment PR with Pages link (cache-busted)
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Plugin skeleton preview:
-            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.DEST_DIR }}/
+            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.DEST_DIR }}/?v=${{ env.BUILD_ID }}
