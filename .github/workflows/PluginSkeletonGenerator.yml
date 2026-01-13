@@ -366,6 +366,28 @@ jobs:
           destination_dir: .
           keep_files: true
 
+      - name: Wait for Pages to be available
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.RUN_DIR }}/"
+
+          echo "Waiting for: $URL"
+          for i in {1..30}; do
+            code="$(curl -s -o /dev/null -L -w '%{http_code}' "$URL" || true)"
+            if [[ "$code" == "200" || "$code" == "301" || "$code" == "302" ]]; then
+              echo "Pages is live (HTTP $code)"
+              exit 0
+            fi
+            echo "Not live yet (HTTP $code), retrying in 3s..."
+            sleep 3
+          done
+
+          echo "Timed out waiting for GitHub Pages to serve the new content."
+          # Don’t fail the workflow; still allow the comment to be posted.
+          exit 0
+
       - name: Comment PR with Pages link (run-versioned)
         if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v5
