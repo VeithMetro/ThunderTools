@@ -5,6 +5,16 @@ permissions:
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ master ]
+    paths:
+      - "PluginSkeletonGenerator/**"
+      - ".github/workflows/generate-plugin-skeletons.yml"
+  pull_request:
+    branches: [ master ]
+    paths:
+      - "PluginSkeletonGenerator/**"
+      - ".github/workflows/generate-plugin-skeletons.yml"
 
 jobs:
   generate:
