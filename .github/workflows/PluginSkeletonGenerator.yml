@@ -292,9 +292,12 @@ jobs:
           if diff_dir.exists():
             home = rel_home(diff_dir)
             css_href = f"{home}assets/style.css"
-            body = "<h1>Diff</h1><ul>" + "".join(
-              f"<li><a href='./{html.escape(v)}.html'>{html.escape(v)}</a></li>" for v in variants
-            ) + "</ul>"
+            body = (
+              "<h1>Diff</h1><ul>"
+              f"<li><a href='{home}'>⟵ Back to preview</a></li>"
+              + "".join(f"<li><a href='./{html.escape(v)}.html'>{html.escape(v)}</a></li>" for v in variants)
+              + "</ul>"
+            )
             (diff_dir / "index.html").write_text(wrap("Diff", home, body, css_href), encoding="utf-8")
 
           # Patch diff2html pages: inject our CSS + nav wrapper
