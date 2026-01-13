@@ -1,6 +1,7 @@
 name: Generate Thunder plugin skeletons
 
 on:
+  workflow_dispatch:
   push:
     branches: [ master ]
     paths:
