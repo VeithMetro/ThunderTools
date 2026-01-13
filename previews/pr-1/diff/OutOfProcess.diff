@@ -11,3 +11,16 @@ index 8552239..0df1b96 100644
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+diff --git a/base_generated/OutOfProcess/OutOfProcessImplementation.cpp b/artifacts/PluginSkeleton-OutOfProcess/OutOfProcessImplementation.cpp
+index 080f79e..d954a96 100644
+--- a/base_generated/OutOfProcess/OutOfProcessImplementation.cpp
++++ b/artifacts/PluginSkeleton-OutOfProcess/OutOfProcessImplementation.cpp
+@@ -23,7 +23,7 @@
+ namespace Thunder {
+ namespace Plugin {
+ 
+-    class OutOfProcessImplementation : public Exchange::IMath {
++    class OutOfProcessImplementationTEST : public Exchange::IMath {
+     public:
+         OutOfProcessImplementation(const OutOfProcessImplementation&) = delete;
+         OutOfProcessImplementation& operator=(const OutOfProcessImplementation&) = delete;

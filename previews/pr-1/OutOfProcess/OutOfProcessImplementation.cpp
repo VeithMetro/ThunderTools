@@ -23,7 +23,7 @@
 namespace Thunder {
 namespace Plugin {
 
-    class OutOfProcessImplementation : public Exchange::IMath {
+    class OutOfProcessImplementationTEST : public Exchange::IMath {
     public:
         OutOfProcessImplementation(const OutOfProcessImplementation&) = delete;
         OutOfProcessImplementation& operator=(const OutOfProcessImplementation&) = delete;
