@@ -1,4 +1,4 @@
-name: Generate Thunder plugin skeletons
+name: Generate plugin skeletons
 
 on:
   workflow_dispatch:
@@ -27,7 +27,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: Define generator variants (single source of truth)
+      - name: Define generator variants
         id: set-matrix
         shell: python
         run: |
@@ -159,7 +159,7 @@ jobs:
           mkdir -p "site/$RUN_DIR"
           touch site/.nojekyll
 
-          # ----- Copy all generated variants (no hard-coded names) -----
+          # ----- Copy all generated variants -----
           python - <<'PY' > variant_names.txt
           import json, os
           m = json.loads(os.environ["MATRIX_JSON"])
@@ -168,7 +168,7 @@ jobs:
           PY
 
           # Two copies:
-          #  1) site/$RUN_DIR/<variant>/...        -> browse-friendly (will get index.html added)
+          #  1) site/$RUN_DIR/<variant>/...          -> browse-friendly (will get index.html added)
           #  2) site/$RUN_DIR/baseline/<variant>/... -> raw generator output (used for master/latest_raw)
           mkdir -p "site/$RUN_DIR/baseline"
 
@@ -300,7 +300,7 @@ jobs:
             )
             (diff_dir / "index.html").write_text(wrap("Diff", home, body, css_href), encoding="utf-8")
 
-          # Patch diff2html pages: inject our CSS + nav wrapper
+          # Patch diff2html pages: inject CSS + nav wrapper
           for v in variants:
             p = diff_dir / f"{v}.html"
             if not p.exists():
