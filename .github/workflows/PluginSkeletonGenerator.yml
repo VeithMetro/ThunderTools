@@ -46,7 +46,7 @@ jobs:
             {
               "name": "OutOfProcess",
               "header": "IBrowser.h",
-              "answers": ["OutOfProcess", "Y", "N", "__INTERFACES_H__", "", "", "N", ""],
+              "answers": ["OutOfProcess", "Y", "N", "__INTERFACES_H__", "", "N", ""],
             },
           ]
 
@@ -167,27 +167,33 @@ jobs:
             print(item["name"])
           PY
 
+          # Two copies:
+          #  1) site/$RUN_DIR/<variant>/...        -> browse-friendly (will get index.html added)
+          #  2) site/$RUN_DIR/baseline/<variant>/... -> raw generator output (used for master/latest_raw)
+          mkdir -p "site/$RUN_DIR/baseline"
+
           while read -r name; do
             cp -a "artifacts/PluginSkeleton-${name}" "site/$RUN_DIR/${name}"
+            cp -a "artifacts/PluginSkeleton-${name}" "site/$RUN_DIR/baseline/${name}"
           done < variant_names.txt
 
-          # ----- PR-only: diff vs gh-pages baseline master/latest (HTML only) -----
+          # ----- PR-only: diff vs gh-pages baseline master/latest_raw (HTML only) -----
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASELINE_ROOT="${PWD}/ghpages_baseline/master/latest"
+            BASELINE_ROOT="${PWD}/ghpages_baseline/master/latest_raw"
 
             mkdir -p diffs "site/$RUN_DIR/diff"
 
             while read -r name; do
               if [[ -d "${BASELINE_ROOT}/${name}" ]]; then
+                # Compare raw baseline (no Pages-generated index.html) to raw PR output (artifact).
                 git diff --no-index -- "${BASELINE_ROOT}/${name}" "artifacts/PluginSkeleton-${name}" > "diffs/${name}.diff" || true
                 npx --yes diff2html-cli@5.2.15 -i file -F "site/$RUN_DIR/diff/${name}.html" -- "diffs/${name}.diff"
               else
-                # Baseline missing (e.g., first-ever run): create a simple placeholder page.
                 cat > "site/$RUN_DIR/diff/${name}.html" <<HTML
           <!doctype html>
           <meta charset="utf-8">
           <title>${name} diff</title>
-          <p>No baseline found at <code>master/latest/${name}</code> on gh-pages.</p>
+          <p>No baseline found at <code>master/latest_raw/${name}</code> on gh-pages.</p>
           HTML
               fi
             done < variant_names.txt
@@ -246,7 +252,7 @@ jobs:
           for v in variants:
             items.append(f"<li><a href='./{html.escape(v)}/'>Browse {html.escape(v)}</a></li>")
           if (run_root / "diff").exists():
-            items.append("<li><a href='./diff/'>Diff vs master/latest</a></li>")
+            items.append("<li><a href='./diff/'>Diff vs master/latest_raw</a></li>")
           items.append("</ul>")
           (run_root / "index.html").write_text(wrap("Preview", "./", "\n".join(items), css_root), encoding="utf-8")
 
@@ -275,6 +281,8 @@ jobs:
             for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
               write_dir_index(d)
 
+          # Only add browse indexes for the user-facing folders and diff;
+          # do NOT index "baseline/" (it is intentionally raw + not for browsing).
           for v in variants:
             walk(run_root / v)
           walk(run_root / "diff")
@@ -308,11 +316,16 @@ jobs:
             p.write_text(txt, encoding="utf-8")
           PY
 
-          # ----- On master pushes: also publish a stable baseline at /master/latest -----
+          # ----- On master pushes: also publish stable baselines -----
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            # Browse baseline (contains Pages helper index.html)
             rm -rf "site/master/latest"
             mkdir -p "site/master"
             cp -a "site/$RUN_DIR" "site/master/latest"
+
+            # Raw baseline for diffs (no Pages helper index.html)
+            rm -rf "site/master/latest_raw"
+            cp -a "site/$RUN_DIR/baseline" "site/master/latest_raw"
 
             cat > "site/master/index.html" <<'HTML'
           <!doctype html>
