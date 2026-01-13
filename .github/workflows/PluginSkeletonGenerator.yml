@@ -103,6 +103,41 @@ jobs:
           cp -a artifacts/PluginSkeleton-InProcess  "site/$DEST_DIR/InProcess"
           cp -a artifacts/PluginSkeleton-OutOfProcess "site/$DEST_DIR/OutOfProcess"
 
+          python - <<'PY'
+          from pathlib import Path
+          import html
+          
+          def write_index(dir_path: Path):
+              entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+              lines = [
+                  "<!doctype html>",
+                  "<meta charset='utf-8'>",
+                  f"<title>{html.escape(dir_path.name)}</title>",
+                  f"<h1>{html.escape(dir_path.name)}</h1>",
+                  "<ul>",
+              ]
+              lines.append("<li><a href='../'>../</a></li>")
+          
+              for p in entries:
+                  if p.name == "index.html":
+                      continue
+                  name = p.name + ("/" if p.is_dir() else "")
+                  href = p.name + ("/" if p.is_dir() else "")
+                  lines.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
+          
+              lines += ["</ul>"]
+              (dir_path / "index.html").write_text("\n".join(lines), encoding="utf-8")
+          
+          def walk(root: Path):
+              for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
+                  write_index(d)
+          
+          site = Path("site")
+          dest = Path("site") / Path(__import__("os").environ["DEST_DIR"])
+          walk(dest / "InProcess")
+          walk(dest / "OutOfProcess")
+          PY
+
           cat > "site/$DEST_DIR/index.html" <<'HTML'
           <!doctype html>
           <html>
