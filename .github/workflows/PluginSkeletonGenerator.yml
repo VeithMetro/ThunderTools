@@ -6,12 +6,12 @@ on:
     branches: [ master ]
     paths:
       - "PluginSkeletonGenerator/**"
-      - ".github/workflows/generate-plugin-skeletons.yml"
+      - ".github/workflows/PluginSkeletonGenerator.yml"
   pull_request:
     branches: [ master ]
     paths:
       - "PluginSkeletonGenerator/**"
-      - ".github/workflows/generate-plugin-skeletons.yml"
+      - ".github/workflows/PluginSkeletonGenerator.yml"
 
 permissions:
   contents: write
