@@ -41,7 +41,7 @@ namespace Plugin {
     {{CONFIG_CLASS}}
     {{JSONRPC_EVENT}}
 {{ADD_PUBLIC_FIELD}}
-    // IPlugin Methods
+    // IPlugin Methods TEST
     const string Initialize(PluginHost::IShell* service) override;
     void Deinitialize(PluginHost::IShell* service) override;
     string Information() const override;
