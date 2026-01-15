@@ -33,7 +33,7 @@ jobs:
         run: |
           import json, os
 
-          # Edit only this list to add/change build types and their answers.
+          # Edit only this list to add/change build types
           #
           # "__INTERFACES_H__" placeholder will be replaced at runtime with:
           #   $GITHUB_WORKSPACE/ThunderInterfaces/interfaces/<header>
