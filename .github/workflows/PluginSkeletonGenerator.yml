@@ -388,43 +388,60 @@ jobs:
             echo "summary=No diff available to summarize." >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
           export DIFF_TEXT
 
           payload="$(python - <<'PY'
           import json, os
-          diff_text = os.environ["DIFF_TEXT"]
           print(json.dumps({
             "model": "openai/gpt-4.1-mini",
             "messages": [
-              {"role": "system", "content": "Summarize these generated-code diffs for reviewers in 5-8 bullet points. Mention notable file additions/removals and any interface/header changes."},
-              {"role": "user", "content": diff_text}
+              {"role": "system", "content": "Summarize these generated-code diffs for reviewers in 5-8 bullet points."},
+              {"role": "user", "content": os.environ["DIFF_TEXT"][:20000]}
             ],
             "temperature": 0.2
           }))
           PY
           )"
 
-          resp="$(curl -sS -L \
+          # Call GitHub Models inference API and capture HTTP status + body.
+          out="$(curl -sS -L -w '%{http_code}' \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             -H "Content-Type: application/json" \
             https://models.github.ai/inference/chat/completions \
-            -d "$payload")"
+            -d "$payload" || true)"
+
+          http_code="${out: -3}"
+          body="${out::-3}"
+
+          if [[ "$http_code" != "200" ]]; then
+            echo "GitHub Models call failed: HTTP $http_code" >&2
+            # Print a short body snippet for debugging (avoid dumping huge content).
+            echo "Response (first 800 chars):" >&2
+            echo "${body:0:800}" >&2
+
+            # Still set an output so the PR comment isn't blank.
+            echo "summary=AI summary unavailable (HTTP $http_code). Check workflow logs." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           summary="$(python - <<'PY'
           import json, sys
-          obj = json.load(sys.stdin)
+          obj = json.loads(sys.stdin.read())
           print(obj["choices"][0]["message"]["content"].strip())
           PY
-          <<<"$resp")"
+          <<<"$body" )"
 
-          {
-            echo "summary<<EOF"
-            echo "$summary"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          if [[ -z "$summary" ]]; then
+            echo "summary=AI summary returned empty content." >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "summary<<EOF"
+              echo "$summary"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Wait for Pages to be available
         if: github.event_name == 'pull_request'
