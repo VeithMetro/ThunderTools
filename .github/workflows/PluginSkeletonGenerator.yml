@@ -16,6 +16,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  models: read
 
 concurrency:
   group: pages-previews
@@ -198,6 +199,10 @@ jobs:
               fi
             done < variant_names.txt
           fi
+          
+          # ----- Combine diffs into one file for the AI summary -----
+          cat diffs/*.diff > diffs/combined.diff || true
+          head -c 20000 diffs/combined.diff > diffs/combined_trunc.diff || true
 
           # ----- Dark theme CSS -----
           mkdir -p "site/$RUN_DIR/assets"
@@ -369,6 +374,58 @@ jobs:
           destination_dir: .
           keep_files: true
 
+      - name: AI summary (GitHub Models)
+        if: github.event_name == 'pull_request'
+        id: ai
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DIFF_TEXT="$(cat diffs/combined_trunc.diff 2>/dev/null || true)"
+          if [[ -z "$DIFF_TEXT" ]]; then
+            echo "summary=No diff available to summarize." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          export DIFF_TEXT
+
+          payload="$(python - <<'PY'
+          import json, os
+          diff_text = os.environ["DIFF_TEXT"]
+          print(json.dumps({
+            "model": "openai/gpt-4.1-mini",
+            "messages": [
+              {"role": "system", "content": "Summarize these generated-code diffs for reviewers in 5-8 bullet points. Mention notable file additions/removals and any interface/header changes."},
+              {"role": "user", "content": diff_text}
+            ],
+            "temperature": 0.2
+          }))
+          PY
+          )"
+
+          resp="$(curl -sS -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "Content-Type: application/json" \
+            https://models.github.ai/inference/chat/completions \
+            -d "$payload")"
+
+          summary="$(python - <<'PY'
+          import json, sys
+          obj = json.load(sys.stdin)
+          print(obj["choices"][0]["message"]["content"].strip())
+          PY
+          <<<"$resp")"
+
+          {
+            echo "summary<<EOF"
+            echo "$summary"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Wait for Pages to be available
         if: github.event_name == 'pull_request'
         shell: bash
@@ -399,3 +456,6 @@ jobs:
           body: |
             Plugin skeleton preview (latest run):
             https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.RUN_DIR }}/
+
+            AI summary of generated diff:
+            ${{ steps.ai.outputs.summary }}
