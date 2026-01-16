@@ -19,7 +19,7 @@ permissions:
   models: read
 
 concurrency:
-  group: pages-previews
+  group: pages-previews-${{ github.head_ref || github.ref }}
   cancel-in-progress: false
 
 jobs:
