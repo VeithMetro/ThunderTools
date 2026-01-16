@@ -374,6 +374,28 @@ jobs:
           destination_dir: .
           keep_files: true
 
+      - name: Prepare diff for AI
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path("diffs/combined_trunc.diff")
+          if not p.exists():
+            Path("diffs/combined_ai.diff").write_text("", encoding="utf-8")
+            raise SystemExit(0)
+
+          text = p.read_text(encoding="utf-8", errors="ignore")
+
+          # Replace workflow-specific directory prefixes with neutral names.
+          text = text.replace("ghpages_baseline/master/latest_raw/", "baseline/")
+          text = text.replace("artifacts/PluginSkeleton-", "generated/")
+
+          Path("diffs/combined_ai.diff").write_text(text, encoding="utf-8")
+          PY
+
       - name: AI summary (GitHub Models)
         if: github.event_name == 'pull_request'
         id: ai
@@ -384,7 +406,7 @@ jobs:
           set -euo pipefail
 
           # Read the (already truncated) combined diff created earlier.
-          DIFF_TEXT="$(cat diffs/combined_trunc.diff 2>/dev/null || true)"
+          DIFF_TEXT="$(cat diffs/combined_ai.diff 2>/dev/null || true)"
           if [[ -z "$DIFF_TEXT" ]]; then
             echo "summary=No diff available to summarize." >> "$GITHUB_OUTPUT"
             exit 0
@@ -399,7 +421,7 @@ jobs:
             # Use a model ID that exists in GitHub Models catalog.
             "model": "openai/gpt-4.1",
             "messages": [
-              {"role": "system", "content": "Summarize these generated-code diffs for reviewers in 5-8 bullet points. Be concrete (files, folders, behavior)."},
+              {"role": "system", "content": "Summarize these diffs for reviewers. Ignore any build/CI directory names (e.g., baseline/ vs generated/) and focus on actual code/content changes."}
               {"role": "user", "content": os.environ["DIFF_TEXT"][:20000]}
             ],
             "temperature": 0.2
