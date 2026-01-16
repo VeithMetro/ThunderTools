@@ -421,7 +421,7 @@ jobs:
             # Use a model ID that exists in GitHub Models catalog.
             "model": "openai/gpt-4.1",
             "messages": [
-              {"role": "system", "content": "Summarize these diffs for reviewers. Ignore any build/CI directory names (e.g., baseline/ vs generated/) and focus on actual code/content changes."}
+              {"role": "system", "content": "Summarize these diffs for reviewers. Ignore any build/CI directory names (e.g., baseline/ vs generated/) and focus on actual code/content changes."},
               {"role": "user", "content": os.environ["DIFF_TEXT"][:20000]}
             ],
             "temperature": 0.2
