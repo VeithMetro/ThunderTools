@@ -23,6 +23,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  Thunder:
+    uses: rdkcentral/Thunder/.github/workflows/Linux build template.yml@master
+
+  ThunderInterfaces:
+    needs: Thunder
+    uses: rdkcentral/ThunderInterfaces/.github/workflows/Linux build template.yml@master
+
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -501,3 +508,96 @@ jobs:
 
             AI summary of generated diff:
             ${{ steps.ai.outputs.summary }}
+
+  compile_generated_plugins:
+    name: Compile generated plugins
+    runs-on: ubuntu-latest
+    needs: [ prepare, generate, ThunderInterfaces ]
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release, MinSizeRel]
+        architecture: [32, 64]
+
+    steps:
+      - name: Install build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+          if [[ "${{ matrix.architecture }}" == "32" ]]; then
+            sudo apt-get install -y gcc-multilib g++-multilib
+          fi
+
+      - name: Download all artifacts from this run
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts_all
+
+      - name: Unpack Thunder + ThunderInterfaces for this flavor
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SUFFIX="${{ matrix.build_type }}${{ matrix.architecture == 32 && '_x86' || '' }}"
+
+          THUNDER_ART_DIR="artifacts_all/Thunder-${SUFFIX}-artifact"
+          TI_ART_DIR="artifacts_all/ThunderInterfaces-${SUFFIX}-artifact"
+
+          mkdir -p "${{ matrix.build_type }}"
+
+          tar -xvzf "${THUNDER_ART_DIR}/${SUFFIX}.tar.gz"
+          tar -xvzf "${TI_ART_DIR}/${SUFFIX}.tar.gz"
+
+          rm -f "${THUNDER_ART_DIR}/${SUFFIX}.tar.gz" "${TI_ART_DIR}/${SUFFIX}.tar.gz"
+
+      - name: Build all generated plugins
+        shell: bash
+        env:
+          MATRIX_JSON: ${{ needs.prepare.outputs.matrix }}
+        run: |
+          set -euo pipefail
+
+          MODULES_DIR="${PWD}/${{ matrix.build_type }}/install/usr/include/WPEFramework/Modules"
+
+          python - <<'PY' > variant_names.txt
+          import json, os
+          m = json.loads(os.environ["MATRIX_JSON"])
+          for item in m["include"]:
+            print(item["name"])
+          PY
+
+          while read -r name; do
+            SRC_DIR="artifacts_all/PluginSkeleton-${name}"
+
+            if [[ ! -d "$SRC_DIR" ]]; then
+              echo "Missing generated artifact for variant: $name"
+              echo "Expected directory: $SRC_DIR"
+              exit 1
+            fi
+
+            BUILD_DIR="${{ matrix.build_type }}/build/${name}"
+
+            cmake -G Ninja -S "$SRC_DIR" -B "$BUILD_DIR" \
+              -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+              -DCMAKE_CXX_FLAGS="-Wall -Wextra -Wpedantic -Werror -m${{ matrix.architecture }}" \
+              -DCMAKE_C_FLAGS="-Wall -Wextra -Wpedantic -Werror -m${{ matrix.architecture }}" \
+              -DCMAKE_INSTALL_PREFIX="${{ matrix.build_type }}/install/usr" \
+              -DCMAKE_MODULE_PATH="${MODULES_DIR}"
+
+            cmake --build "$BUILD_DIR" --target install
+          done < variant_names.txt
+
+      - name: Tar files
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUFFIX="${{ matrix.build_type }}${{ matrix.architecture == 32 && '_x86' || '' }}"
+          tar -czvf "${SUFFIX}.tar.gz" "${{ matrix.build_type }}"
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ThunderNanoServices-${{ matrix.build_type }}${{ matrix.architecture == 32 && '_x86' || '' }}-artifact
+          path: ${{ matrix.build_type }}${{ matrix.architecture == 32 && '_x86' || '' }}.tar.gz
