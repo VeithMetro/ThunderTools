@@ -457,7 +457,8 @@ jobs:
           print(json.dumps({
             "model": "openai/gpt-4.1",
             "messages": [
-              {"role": "system", "content": "Summarize these diffs for reviewers. Ignore any build/CI directory names (e.g., baseline/ vs generated/) and focus on actual code/content changes."},
+              # CHANGED: Added "Start directly with the list..."
+              {"role": "system", "content": "Summarize these diffs for reviewers. Ignore build/CI paths. Start directly with the bullet points; do not provide an intro sentence."},
               {"role": "user", "content": os.environ["DIFF_TEXT"][:20000]}
             ],
             "temperature": 0.2
@@ -534,7 +535,8 @@ jobs:
             Plugin skeleton preview (latest run):
             https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/PluginSkeletonGenerator/${{ env.RUN_DIR }}/
 
-            ${{ steps.build_site.outputs.has_diff == 'true' && format('**AI summary of generated diff:**\n{0}', steps.ai.outputs.summary) || '**No changes detected** in generated plugin code. The PR changes are internal to the generator or do not affect output.' }}
+            ${{ steps.build_site.outputs.has_diff == 'true' && '**AI summary of generated diff:**' || '**No changes detected** in generated plugin code. The PR changes are internal to the generator or do not affect output.' }}
+            ${{ steps.build_site.outputs.has_diff == 'true' && steps.ai.outputs.summary || '' }}
 
   compile_generated_plugins:
     name: Compile generated plugins
