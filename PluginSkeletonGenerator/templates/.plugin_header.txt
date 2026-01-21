@@ -24,7 +24,7 @@
 namespace Thunder {
 namespace Plugin {
 
-    class {{PLUGIN_NAME}} {{HEADER_INHERITED_CLASS}} {
+    class {{PLUGIN_NAME}}_TEST {{HEADER_INHERITED_CLASS}} {
     public:
     {{PLUGIN_NAME}}(const {{PLUGIN_NAME}}&) = delete;
     {{PLUGIN_NAME}}& operator=(const {{PLUGIN_NAME}}&) = delete;
