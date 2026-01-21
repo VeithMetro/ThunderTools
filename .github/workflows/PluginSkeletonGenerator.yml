@@ -42,9 +42,6 @@ jobs:
           import json, os
 
           # Edit only this list to add/change build types
-          #
-          # "__INTERFACES_H__" placeholder will be replaced at runtime with:
-          #   $GITHUB_WORKSPACE/ThunderInterfaces/interfaces/<header>
           variants = [
             {
               "name": "InProcess",
@@ -120,7 +117,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ prepare, generate ]
 
-    # Avoid trying to push to gh-pages/comment when PR comes from a fork
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
@@ -146,25 +142,33 @@ jobs:
         with:
           node-version: "20"
 
-      # Split logic: This step builds the site and computes diffs, then outputs 'has_diff'
       - name: Build static preview site (and diff for PRs)
         id: build_site
         shell: bash
         env:
           MATRIX_JSON: ${{ needs.prepare.outputs.matrix }}
+          TOOL_NAME: "PluginSkeletonGenerator"
         run: |
           set -euo pipefail
 
           HAS_DIFF="false"
+          mkdir -p site
 
-          # ----- PR-only: diff vs gh-pages baseline master/latest_raw (HTML only) -----
+          # ----- PR-only: diff vs gh-pages baseline -----
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            BASELINE_ROOT="${PWD}/ghpages_baseline/master/latest_raw"
-
+            BASELINE_ROOT="${PWD}/ghpages_baseline/${TOOL_NAME}/master/latest_raw"
             mkdir -p diffs "site/$RUN_DIR/diff"
-
-            # Track which plugins have non-empty diffs for the index page.
             > diffs/plugins_with_diffs.txt
+
+            python - <<'PY' > variant_names.txt
+          import json, os
+          try:
+              m = json.loads(os.environ["MATRIX_JSON"])
+              for item in m["include"]:
+                  print(item["name"])
+          except:
+              pass
+          PY
 
             while read -r name; do
               if [[ -d "${BASELINE_ROOT}/${name}" ]]; then
@@ -174,35 +178,29 @@ jobs:
                   -- "${BASELINE_ROOT}/${name}" "artifacts/PluginSkeleton-${name}" \
                   > "diffs/${name}.diff" || true
 
-                # Check if the diff file is non-empty (has actual changes).
                 if [[ -s "diffs/${name}.diff" ]]; then
-                  # Generate HTML only for non-empty diffs.
                   npx --yes diff2html-cli@5.2.15 -i file -F "site/$RUN_DIR/diff/${name}.html" -- "diffs/${name}.diff"
                   echo "$name" >> diffs/plugins_with_diffs.txt
                 fi
               else
-                # Baseline missing: create a simple placeholder (treat as "has diff").
                 cat > "site/$RUN_DIR/diff/${name}.html" <<HTML
-                  <!doctype html>
-                  <meta charset="utf-8">
-                  <title>${name} diff</title>
-                  <p>No baseline found at de>master/latest_raw/${name}</code> on gh-pages.</p>
-                  HTML
+          <!doctype html>
+          <meta charset="utf-8">
+          <title>${name} diff</title>
+          <p>No baseline found at <code>master/latest_raw/${name}</code> on gh-pages.</p>
+          HTML
                 echo "$name" >> diffs/plugins_with_diffs.txt
               fi
             done < variant_names.txt
 
-            # Concatenate all non-empty diffs for AI summary.
             cat diffs/*.diff 2>/dev/null > diffs/combined.diff || true
             head -c 20000 diffs/combined.diff > diffs/combined_trunc.diff 2>/dev/null || true
 
-            # Check flag: does at least one plugin have a diff?
             if [[ -s diffs/plugins_with_diffs.txt ]]; then
               HAS_DIFF="true"
             fi
           fi
           
-          # Output the flag using GITHUB_OUTPUT to fix the "context access" warning
           echo "has_diff=$HAS_DIFF" >> "$GITHUB_OUTPUT"
 
           RUN_DIR="${BASE_DIR}/run-${{ github.run_id }}"
@@ -218,7 +216,7 @@ jobs:
           import json, os
           m = json.loads(os.environ["MATRIX_JSON"])
           for item in m["include"]:
-            print(item["name"])
+              print(item["name"])
           PY
 
           mkdir -p "site/$RUN_DIR/baseline"
@@ -245,7 +243,7 @@ jobs:
           h1{font-size:28px;margin:18px 0}
           CSS
 
-          # ----- Build hub + folder indexes + patch diff HTML with nav/CSS -----
+          # ----- Build hub + folder indexes -----
           python - <<'PY'
           from pathlib import Path
           import html, json, os, re
@@ -257,111 +255,109 @@ jobs:
           css_root = "./assets/style.css"
 
           def nav(home: str) -> str:
-            links = [f"<a href='{home}'>Preview</a>"]
-            for v in variants:
-              links.append(f"<a href='{home}{html.escape(v)}/'>{html.escape(v)}</a>")
-            links.append(f"<a href='{home}diff/'>Diff</a>")
-            return "".join(links)
+              links = [f"<a href='{home}'>Preview</a>"]
+              for v in variants:
+                  links.append(f"<a href='{home}{html.escape(v)}/'>{html.escape(v)}</a>")
+              links.append(f"<a href='{home}diff/'>Diff</a>")
+              return "".join(links)
 
           def wrap(title: str, home: str, body_html: str, css_href: str) -> str:
-            return "\n".join([
-              "<!doctype html>",
-              "<html><head><meta charset='utf-8'>",
-              f"<title>{html.escape(title)}</title>",
-              f"<link rel='stylesheet' href='{html.escape(css_href)}'>",
-              "</head><body>",
-              f"<div class='nav'>{nav(home)}</div>",
-              "<div class='container'>",
-              body_html,
-              "</div></body></html>",
-            ])
+              return "\n".join([
+                  "<!doctype html>",
+                  "<html><head><meta charset='utf-8'>",
+                  f"<title>{html.escape(title)}</title>",
+                  f"<link rel='stylesheet' href='{html.escape(css_href)}'>",
+                  "</head><body>",
+                  f"<div class='nav'>{nav(home)}</div>",
+                  "<div class='container'>",
+                  body_html,
+                  "</div></body></html>",
+              ])
 
           # Hub page
           items = ["<h1>PluginSkeletonGenerator output</h1><ul>"]
           for v in variants:
-            items.append(f"<li><a href='./{html.escape(v)}/'>Browse {html.escape(v)}</a></li>")
+              items.append(f"<li><a href='./{html.escape(v)}/'>Browse {html.escape(v)}</a></li>")
           if (run_root / "diff").exists():
-            items.append("<li><a href='./diff/'>Diff vs master/latest_raw</a></li>")
+              items.append("<li><a href='./diff/'>Diff vs master/latest_raw</a></li>")
           items.append("</ul>")
           (run_root / "index.html").write_text(wrap("Preview", "./", "\n".join(items), css_root), encoding="utf-8")
 
           def rel_home(dir_path: Path) -> str:
-            rel = dir_path.relative_to(run_root)
-            depth = len(rel.parts)
-            return "./" if depth == 0 else "../" * depth
+              rel = dir_path.relative_to(run_root)
+              depth = len(rel.parts)
+              return "./" if depth == 0 else "../" * depth
 
           def write_dir_index(dir_path: Path):
-            home = rel_home(dir_path)
-            css_href = f"{home}assets/style.css"
-            entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
-            lst = ["<h1>%s</h1><ul>" % html.escape(dir_path.name), f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
-            for p in entries:
-              if p.name == "index.html":
-                continue
-              name = p.name + ("/" if p.is_dir() else "")
-              href = p.name + ("/" if p.is_dir() else "")
-              lst.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
-            lst.append("</ul>")
-            (dir_path / "index.html").write_text(wrap(dir_path.name, home, "\n".join(lst), css_href), encoding="utf-8")
+              home = rel_home(dir_path)
+              css_href = f"{home}assets/style.css"
+              entries = sorted(dir_path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+              lst = ["<h1>%s</h1><ul>" % html.escape(dir_path.name), f"<li><a href='{home}'>⟵ Back to preview</a></li>"]
+              for p in entries:
+                  if p.name == "index.html":
+                      continue
+                  name = p.name + ("/" if p.is_dir() else "")
+                  href = p.name + ("/" if p.is_dir() else "")
+                  lst.append(f"<li><a href='{html.escape(href)}'>{html.escape(name)}</a></li>")
+              lst.append("</ul>")
+              (dir_path / "index.html").write_text(wrap(dir_path.name, home, "\n".join(lst), css_href), encoding="utf-8")
 
           def walk(root: Path):
-            if not root.exists():
-              return
-            for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
-              write_dir_index(d)
+              if not root.exists():
+                  return
+              for d in [root] + [p for p in root.rglob("*") if p.is_dir()]:
+                  write_dir_index(d)
 
-          # Only add browse indexes for the user-facing folders and diff;
-          # do NOT index "baseline/" (it is intentionally raw + not for browsing).
           for v in variants:
-            walk(run_root / v)
+              walk(run_root / v)
           walk(run_root / "diff")
 
-          # Diff index (HTML only)
+          # Diff index
           diff_dir = run_root / "diff"
           if diff_dir.exists():
-            home = rel_home(diff_dir)
-            css_href = f"{home}assets/style.css"
+              home = rel_home(diff_dir)
+              css_href = f"{home}assets/style.css"
 
-            plugins_with_diffs_path = Path("diffs/plugins_with_diffs.txt")
-            if plugins_with_diffs_path.exists():
-              plugins_with_diffs = [
-                line.strip() for line in plugins_with_diffs_path.read_text(encoding="utf-8").splitlines() if line.strip()
-              ]
-            else:
-              plugins_with_diffs = []
+              plugins_with_diffs_path = Path("diffs/plugins_with_diffs.txt")
+              if plugins_with_diffs_path.exists():
+                  plugins_with_diffs = [
+                      line.strip() for line in plugins_with_diffs_path.read_text(encoding="utf-8").splitlines() if line.strip()
+                  ]
+              else:
+                  plugins_with_diffs = []
 
-            if plugins_with_diffs:
-              body = (
-                "<h1>Diff</h1><ul>"
-                f"<li><a href='{home}'>⟵ Back to preview</a></li>"
-                + "".join(f"<li><a href='./{html.escape(v)}.html'>{html.escape(v)}</a></li>" for v in plugins_with_diffs)
-                + "</ul>"
-              )
-            else:
-              body = (
-                "<h1>Diff</h1>"
-                f"<p><a href='{home}'>⟵ Back to preview</a></p>"
-                "<p>No changes detected in any generated plugin.</p>"
-              )
-            (diff_dir / "index.html").write_text(wrap("Diff", home, body, css_href), encoding="utf-8")
+              if plugins_with_diffs:
+                  body = (
+                      "<h1>Diff</h1><ul>"
+                      f"<li><a href='{home}'>⟵ Back to preview</a></li>"
+                      + "".join(f"<li><a href='./{html.escape(v)}.html'>{html.escape(v)}</a></li>" for v in plugins_with_diffs)
+                      + "</ul>"
+                  )
+              else:
+                  body = (
+                      "<h1>Diff</h1>"
+                      f"<p><a href='{home}'>⟵ Back to preview</a></p>"
+                      "<p>No changes detected in any generated plugin.</p>"
+                  )
+              (diff_dir / "index.html").write_text(wrap("Diff", home, body, css_href), encoding="utf-8")
 
           # Patch diff2html pages
           for v in variants:
-            p = diff_dir / f"{v}.html"
-            if not p.exists():
-              continue
-            home = rel_home(p.parent)
-            css_href = f"{home}assets/style.css"
-            txt = p.read_text(encoding="utf-8")
+              p = diff_dir / f"{v}.html"
+              if not p.exists():
+                  continue
+              home = rel_home(p.parent)
+              css_href = f"{home}assets/style.css"
+              txt = p.read_text(encoding="utf-8")
 
-            if css_href not in txt:
-              txt = re.sub(r"</head>", f"  <link rel='stylesheet' href='{css_href}'>\n</head>", txt, count=1, flags=re.I)
+              if css_href not in txt:
+                  txt = re.sub(r"</head>", f"  <link rel='stylesheet' href='{css_href}'>\n</head>", txt, count=1, flags=re.I)
 
-            if "class='nav'" not in txt and 'class="nav"' not in txt:
-              txt = re.sub(r"<body[^>]*>", lambda m: m.group(0) + f"\n<div class='nav'>{nav(home)}</div>\n<div class='container'>", txt, count=1, flags=re.I)
-              txt = re.sub(r"</body>", "</div>\n</body>", txt, count=1, flags=re.I)
+              if "class='nav'" not in txt and 'class="nav"' not in txt:
+                  txt = re.sub(r"<body[^>]*>", lambda m: m.group(0) + f"\n<div class='nav'>{nav(home)}</div>\n<div class='container'>", txt, count=1, flags=re.I)
+                  txt = re.sub(r"</body>", "</div>\n</body>", txt, count=1, flags=re.I)
 
-            p.write_text(txt, encoding="utf-8")
+              p.write_text(txt, encoding="utf-8")
           PY
 
           # ----- On master pushes: also publish stable baselines -----
@@ -381,7 +377,7 @@ jobs:
           HTML
           fi
 
-          # ----- Stable pointer page: /previews/pr-X/ -> latest PR run -----
+          # ----- Stable pointer page -----
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             mkdir -p "site/$BASE_DIR"
             cat > "site/$BASE_DIR/index.html" <<HTML
@@ -392,7 +388,7 @@ jobs:
           HTML
           fi
 
-          # Optional root index
+          # Optional tool root index
           cat > "site/index.html" <<'HTML'
           <!doctype html>
           <meta charset="utf-8">
@@ -409,11 +405,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./site
-          destination_dir: .
+          destination_dir: PluginSkeletonGenerator
           keep_files: true
 
       - name: Prepare diff for AI
-        # Now referencing step output, not env
         if: github.event_name == 'pull_request' && steps.build_site.outputs.has_diff == 'true'
         shell: bash
         run: |
@@ -423,20 +418,16 @@ jobs:
 
           p = Path("diffs/combined_trunc.diff")
           if not p.exists():
-            Path("diffs/combined_ai.diff").write_text("", encoding="utf-8")
-            raise SystemExit(0)
+              Path("diffs/combined_ai.diff").write_text("", encoding="utf-8")
+              raise SystemExit(0)
 
           text = p.read_text(encoding="utf-8", errors="ignore")
-
-          # Replace workflow-specific directory prefixes with neutral names.
-          text = text.replace("ghpages_baseline/master/latest_raw/", "baseline/")
+          text = text.replace("ghpages_baseline/PluginSkeletonGenerator/master/latest_raw/", "baseline/")
           text = text.replace("artifacts/PluginSkeleton-", "generated/")
-
           Path("diffs/combined_ai.diff").write_text(text, encoding="utf-8")
           PY
 
       - name: AI summary (GitHub Models)
-        # Now referencing step output, not env
         if: github.event_name == 'pull_request' && steps.build_site.outputs.has_diff == 'true'
         id: ai
         env:
@@ -445,20 +436,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Read the (already truncated) combined diff created earlier.
           DIFF_TEXT="$(cat diffs/combined_ai.diff 2>/dev/null || true)"
           if [[ -z "$DIFF_TEXT" ]]; then
             echo "summary=No diff available to summarize." >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Make it visible to the Python subprocess below.
           export DIFF_TEXT
 
           payload="$(python - <<'PY'
           import json, os
           print(json.dumps({
-            # Use a model ID that exists in GitHub Models catalog.
             "model": "openai/gpt-4.1",
             "messages": [
               {"role": "system", "content": "Summarize these diffs for reviewers. Ignore any build/CI directory names (e.g., baseline/ vs generated/) and focus on actual code/content changes."},
@@ -469,7 +457,6 @@ jobs:
           PY
           )"
 
-          # Call GitHub Models inference endpoint.
           http_code="$(
             curl -sS -L \
               -o resp.json \
@@ -513,7 +500,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.RUN_DIR }}/"
+          # URL includes the tool directory now
+          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/PluginSkeletonGenerator/${{ env.RUN_DIR }}/"
 
           echo "Waiting for: $URL"
           for i in {1..30}; do
@@ -536,7 +524,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             Plugin skeleton preview (latest run):
-            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ env.RUN_DIR }}/
+            https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/PluginSkeletonGenerator/${{ env.RUN_DIR }}/
 
             ${{ steps.build_site.outputs.has_diff == 'true' && format('**AI summary of generated diff:**\n{0}', steps.ai.outputs.summary) || '**No changes detected** in generated plugin code. The PR changes are internal to the generator or do not affect output.' }}
 
