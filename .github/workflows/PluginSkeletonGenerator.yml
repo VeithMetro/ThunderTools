@@ -435,74 +435,74 @@ jobs:
           Path("diffs/combined_ai.diff").write_text(text, encoding="utf-8")
           PY
 
-      - name: AI summary (GitHub Models)
-        if: github.event_name == 'pull_request' && steps.build_site.outputs.has_diff == 'true'
-        id: ai
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
+          - name: AI summary (GitHub Models)
+            if: github.event_name == 'pull_request' && steps.build_site.outputs.has_diff == 'true'
+            id: ai
+            env:
+              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            shell: bash
+            run: |
+              set -euo pipefail
 
-          DIFF_TEXT="$(cat diffs/combined_ai.diff 2>/dev/null || true)"
-          if [[ -z "$DIFF_TEXT" ]]; then
-            echo "summary=No diff available to summarize." >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+              DIFF_TEXT="$(cat diffs/combined_ai.diff 2>/dev/null || true)"
+              if [[ -z "$DIFF_TEXT" ]]; then
+                echo "summary=No diff available to summarize." >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
 
-          export DIFF_TEXT
+              # Write payload to file instead of using command substitution
+              python - <<'PY' > payload.json
+                import json, sys
+                with open("diffs/combined_ai.diff", "r", encoding="utf-8", errors="ignore") as f:
+                    diff_text = f.read()[:50000]
 
-          payload="$(python - <<'PY'
-          import json, os
-          print(json.dumps({
-            "model": "openai/gpt-4.1",
-            "messages": [
-              # Adjusted prompt to prevent intro sentences
-              {"role": "system", "content": "Summarize these diffs for reviewers. Ignore build/CI paths. Start directly with the bullet points; do not provide an intro sentence."},
-              {"role": "user", "content": os.environ["DIFF_TEXT"][:50000]} # Increased limit
-            ],
-            "temperature": 0.5 # Increased temperature
-          }))
-          PY
-          )"
+                print(json.dumps({
+                    "model": "openai/gpt-4.1",
+                    "messages": [
+                        {"role": "system", "content": "Summarize these diffs for reviewers. Ignore build/CI paths. Start directly with the bullet points; do not provide an intro sentence."},
+                        {"role": "user", "content": diff_text}
+                    ],
+                    "temperature": 0.5
+                }))
+              PY
 
-          http_code="$(
-            curl -sS -L \
-              -o resp.json \
-              -w '%{http_code}' \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              -H "Content-Type: application/json" \
-              [https://models.github.ai/inference/chat/completions](https://models.github.ai/inference/chat/completions) \
-              -d "$payload" || true
-          )"
+              http_code="$(
+                curl -sS -L \
+                  -o resp.json \
+                  -w '%{http_code}' \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "Authorization: Bearer ${GH_TOKEN}" \
+                  -H "X-GitHub-Api-Version: 2022-11-28" \
+                  -H "Content-Type: application/json" \
+                  https://models.github.ai/inference/chat/completions \
+                  -d @payload.json || true
+              )"
 
-          if [[ "$http_code" != "200" ]]; then
-            echo "GitHub Models call failed: HTTP $http_code" >&2
-            echo "Response (first 800 chars):" >&2
-            head -c 800 resp.json >&2 || true
-            echo "summary=AI summary unavailable (HTTP $http_code). Check workflow logs." >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+              if [[ "$http_code" != "200" ]]; then
+                echo "GitHub Models call failed: HTTP $http_code" >&2
+                echo "Response (first 800 chars):" >&2
+                head -c 800 resp.json >&2 || true
+                echo "summary=AI summary unavailable (HTTP $http_code). Check workflow logs." >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
 
-          summary="$(python - <<'PY'
-          import json
-          with open("resp.json", "r", encoding="utf-8", errors="ignore") as f:
-            obj = json.load(f)
-          print(obj["choices"][0]["message"]["content"].strip())
-          PY
-          )"
+              summary="$(python - <<'PY'
+                import json
+                with open("resp.json", "r", encoding="utf-8", errors="ignore") as f:
+                    obj = json.load(f)
+                print(obj["choices"][0]["message"]["content"].strip())
+                PY
+              )"
 
-          if [[ -z "$summary" ]]; then
-            echo "summary=AI summary returned empty content." >> "$GITHUB_OUTPUT"
-          else
-            {
-              echo "summary<<EOF"
-              echo "$summary"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          fi
+              if [[ -z "$summary" ]]; then
+                echo "summary=AI summary returned empty content." >> "$GITHUB_OUTPUT"
+              else
+                {
+                  echo "summary<<EOF"
+                  echo "$summary"
+                  echo "EOF"
+                } >> "$GITHUB_OUTPUT"
+              fi
 
       - name: Wait for Pages to be available
         if: github.event_name == 'pull_request'
