@@ -452,18 +452,18 @@ jobs:
 
           # Write payload to file instead of using command substitution
           python - <<'PY' > payload.json
-            import json, sys
-            with open("diffs/combined_ai.diff", "r", encoding="utf-8", errors="ignore") as f:
-                diff_text = f.read()[:50000]
+          import json, sys
+          with open("diffs/combined_ai.diff", "r", encoding="utf-8", errors="ignore") as f:
+              diff_text = f.read()[:50000]
 
-            print(json.dumps({
-                "model": "openai/gpt-4.1",
-                "messages": [
-                    {"role": "system", "content": "Summarize these diffs for reviewers. Ignore build/CI paths. Start directly with the bullet points; do not provide an intro sentence."},
-                    {"role": "user", "content": diff_text}
-                ],
-                "temperature": 0.5
-            }))
+          print(json.dumps({
+              "model": "openai/gpt-4.1",
+              "messages": [
+                  {"role": "system", "content": "Summarize these diffs for reviewers. Ignore build/CI paths. Start directly with the bullet points; do not provide an intro sentence."},
+                  {"role": "user", "content": diff_text}
+              ],
+              "temperature": 0.5
+          }))
           PY
 
           http_code="$(
@@ -487,11 +487,11 @@ jobs:
           fi
 
           summary="$(python - <<'PY'
-            import json
-            with open("resp.json", "r", encoding="utf-8", errors="ignore") as f:
-                obj = json.load(f)
-            print(obj["choices"][0]["message"]["content"].strip())
-            PY
+          import json
+          with open("resp.json", "r", encoding="utf-8", errors="ignore") as f:
+              obj = json.load(f)
+          print(obj["choices"][0]["message"]["content"].strip())
+          PY
           )"
 
           if [[ -z "$summary" ]]; then
