@@ -307,15 +307,25 @@ jobs:
           (site_root / "index.html").write_text(wrap_page("ProxyStub Results", main_body, ""), encoding="utf-8")
           PY
 
-          # ----- Master Push Logic (unchanged) -----
+          # ----- Master Push: Update Baseline -----
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo "Updating master baseline..."
+            
+            # 1. Update Browsable Site
+            # Remove old directory completely to ensure deleted files are gone
             rm -rf "site/master/latest"
-            mkdir -p "site/master"
-            cp -a "site/$RUN_DIR" "site/master/latest"
+            mkdir -p "site/master/latest"
+            # Copy contents of the current run
+            cp -a "site/$RUN_DIR"/* "site/master/latest/"
 
+            # 2. Update Raw Baseline (for future diffs)
+            # Remove old directory completely
             rm -rf "site/master/latest_raw"
             mkdir -p "site/master/latest_raw"
+            # Copy fresh generated artifacts
             cp -r generated/* "site/master/latest_raw/"
+            
+            echo "Baseline updated."
           fi
 
       - name: Deploy to gh-pages
