@@ -143,12 +143,18 @@ jobs:
           fi
 
           RUN_DIR="${BASE_DIR}/run-${{ github.run_id }}"
+          
+          # 1. Save for future steps
           echo "RUN_DIR=$RUN_DIR" >> "$GITHUB_ENV"
+          
+          # 2. Export for CURRENT step (Python script below needs this!)
+          export RUN_DIR
+          export HAS_DIFF  # We will update this later, but export it now
 
           mkdir -p "site/$RUN_DIR"
           touch site/.nojekyll
 
-          # Prepare 'generated' folder for diffing
+          # Prepare 'generated' folder
           mkdir -p generated
           cp -r artifacts_all/* generated/
 
@@ -156,7 +162,7 @@ jobs:
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASELINE_ROOT="${PWD}/ghpages_baseline/${TOOL_NAME}/master/latest_raw"
             mkdir -p diffs "site/$RUN_DIR/diff"
-
+            
             if [[ -d "$BASELINE_ROOT" ]]; then
                git diff --no-index \
                   --src-prefix=baseline/ \
@@ -174,6 +180,8 @@ jobs:
 
             if [[ -s "diffs/combined.diff" ]]; then
                HAS_DIFF="true"
+               export HAS_DIFF  # Update export so Python sees "true"
+               
                npx --yes diff2html-cli@5.2.15 -i file -F "site/$RUN_DIR/diff/index.html" -- "diffs/combined.diff"
                head -c 50000 diffs/combined.diff > diffs/combined_trunc.diff
             else
@@ -181,24 +189,27 @@ jobs:
                echo "<h1>No changes detected</h1>" > "site/$RUN_DIR/diff/index.html"
             fi
           fi
-
+          
           echo "has_diff=$HAS_DIFF" >> "$GITHUB_OUTPUT"
 
-          # ----- Copy generated files for browsing -----
+          # ----- Copy files for browsing -----
           mkdir -p "site/$RUN_DIR/browse"
           cp -r generated/* "site/$RUN_DIR/browse/"
 
-          # ----- Generate Site -----
-          python - <<'PY'
+          # ----- Generate Site with Python -----
+          # Pass env vars explicitly to be 100% safe
+          RUN_DIR="$RUN_DIR" HAS_DIFF="$HAS_DIFF" python - <<'PY'
           import os
           from pathlib import Path
           import html
 
           run_dir = os.environ["RUN_DIR"]
+          has_diff = os.environ.get("HAS_DIFF") == "true"
+          
           site_root = Path("site") / run_dir
           browse_root = site_root / "browse"
 
-          # Generate Dark Theme CSS
+          # 1. Generate Dark Theme CSS
           css_path = site_root / "assets" / "style.css"
           css_path.parent.mkdir(parents=True, exist_ok=True)
           css_path.write_text("""
@@ -212,7 +223,6 @@ jobs:
           """, encoding="utf-8")
 
           def nav_html(rel_home):
-              has_diff = os.environ.get("HAS_DIFF") == "true"
               links = [f"<a href='{rel_home}index.html'>Home</a>", f"<a href='{rel_home}browse/index.html'>Browse Files</a>"]
               if has_diff:
                   links.append(f"<a href='{rel_home}diff/index.html'>View Diff</a>")
@@ -227,12 +237,11 @@ jobs:
               <div class='container'>{body}</div>
               </body></html>"""
 
-          # Recursive Directory Listing
+          # 2. Recursive Directory Listing
           def generate_index(directory, relative_to_root):
-              # relative_to_root is like "../" or "../../"
               items = sorted(directory.iterdir(), key=lambda p: (p.is_file(), p.name))
               links = []
-
+              
               if directory != browse_root:
                   links.append(f"<li><a href='../index.html'>.. (Parent Directory)</a></li>")
 
@@ -241,13 +250,12 @@ jobs:
                   name = item.name + ("/" if item.is_dir() else "")
                   href = item.name + ("/index.html" if item.is_dir() else "")
                   links.append(f"<li><a href='{href}'>{name}</a></li>")
-
+              
               body = f"<h1>Index of {html.escape(directory.name)}</h1><ul>{''.join(links)}</ul>"
-
-              # Calculate path back to assets
+              
               depth = len(directory.relative_to(site_root).parts)
               rel_assets = "../" * depth
-
+              
               (directory / "index.html").write_text(wrap_page(directory.name, body, rel_assets), encoding="utf-8")
 
               for item in items:
@@ -257,22 +265,21 @@ jobs:
           if browse_root.exists():
               generate_index(browse_root, "")
 
-          # Main Landing Page
+          # 3. Main Landing Page
           main_body = """
           <h1>ProxyStubGenerator Results</h1>
           <p>Generated proxy and stub code from ThunderInterfaces build.</p>
           <ul>
             <li><a href='./browse/index.html'>Browse Generated Code</a></li>
           """
-          if os.environ.get("HAS_DIFF") == "true":
+          if has_diff:
               main_body += "<li><a href='./diff/index.html'>View Diff vs Master</a></li>"
           
           main_body += "</ul>"
           (site_root / "index.html").write_text(wrap_page("ProxyStub Results", main_body, ""), encoding="utf-8")
-
           PY
 
-          # ----- Master Push: Update Baseline -----
+          # ----- Master Push Logic (unchanged) -----
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
             rm -rf "site/master/latest"
             mkdir -p "site/master"
