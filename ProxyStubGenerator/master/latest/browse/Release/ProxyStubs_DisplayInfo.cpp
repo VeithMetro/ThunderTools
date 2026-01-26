@@ -517,23 +517,23 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (sizeof(Core::instance_id))) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                Core::instance_id _parameter_12decf06InstanceId__ = reader.Number<Core::instance_id>();
+                Core::instance_id _parameter_9d58f869InstanceId__ = reader.Number<Core::instance_id>();
 
-                Exchange::IConnectionProperties::INotification* _parameter_12decf06{};
-                ProxyStub::UnknownProxy* _parameter_12decf06Proxy__ = nullptr;
-                if (_parameter_12decf06InstanceId__ != 0) {
-                    _parameter_12decf06Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_12decf06InstanceId__, false, _parameter_12decf06);
-                    ASSERT((_parameter_12decf06 != nullptr) && (_parameter_12decf06Proxy__ != nullptr));
-                    if ((_parameter_12decf06 == nullptr) || (_parameter_12decf06Proxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
+                Exchange::IConnectionProperties::INotification* _parameter_9d58f869{};
+                ProxyStub::UnknownProxy* _parameter_9d58f869Proxy__ = nullptr;
+                if (_parameter_9d58f869InstanceId__ != 0) {
+                    _parameter_9d58f869Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_9d58f869InstanceId__, false, _parameter_9d58f869);
+                    ASSERT((_parameter_9d58f869 != nullptr) && (_parameter_9d58f869Proxy__ != nullptr));
+                    if ((_parameter_9d58f869 == nullptr) || (_parameter_9d58f869Proxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
                 }
 
-                uint32_t result = implementation->Register(_parameter_12decf06);
+                uint32_t result = implementation->Register(_parameter_9d58f869);
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Number<uint32_t>(result);
 
-                if (_parameter_12decf06Proxy__ != nullptr) {
-                    RPC::Administrator::Instance().Release(_parameter_12decf06Proxy__, message->Response());
+                if (_parameter_9d58f869Proxy__ != nullptr) {
+                    RPC::Administrator::Instance().Release(_parameter_9d58f869Proxy__, message->Response());
                 }
 
                 return (Core::ERROR_NONE);
@@ -560,23 +560,23 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (sizeof(Core::instance_id))) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                Core::instance_id _parameter_35e48a39InstanceId__ = reader.Number<Core::instance_id>();
+                Core::instance_id _parameter_1c1b68caInstanceId__ = reader.Number<Core::instance_id>();
 
-                Exchange::IConnectionProperties::INotification* _parameter_35e48a39{};
-                ProxyStub::UnknownProxy* _parameter_35e48a39Proxy__ = nullptr;
-                if (_parameter_35e48a39InstanceId__ != 0) {
-                    _parameter_35e48a39Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_35e48a39InstanceId__, false, _parameter_35e48a39);
-                    ASSERT((_parameter_35e48a39 != nullptr) && (_parameter_35e48a39Proxy__ != nullptr));
-                    if ((_parameter_35e48a39 == nullptr) || (_parameter_35e48a39Proxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
+                Exchange::IConnectionProperties::INotification* _parameter_1c1b68ca{};
+                ProxyStub::UnknownProxy* _parameter_1c1b68caProxy__ = nullptr;
+                if (_parameter_1c1b68caInstanceId__ != 0) {
+                    _parameter_1c1b68caProxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_1c1b68caInstanceId__, false, _parameter_1c1b68ca);
+                    ASSERT((_parameter_1c1b68ca != nullptr) && (_parameter_1c1b68caProxy__ != nullptr));
+                    if ((_parameter_1c1b68ca == nullptr) || (_parameter_1c1b68caProxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
                 }
 
-                uint32_t result = implementation->Unregister(_parameter_35e48a39);
+                uint32_t result = implementation->Unregister(_parameter_1c1b68ca);
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Number<uint32_t>(result);
 
-                if (_parameter_35e48a39Proxy__ != nullptr) {
-                    RPC::Administrator::Instance().Release(_parameter_35e48a39Proxy__, message->Response());
+                if (_parameter_1c1b68caProxy__ != nullptr) {
+                    RPC::Administrator::Instance().Release(_parameter_1c1b68caProxy__, message->Response());
                 }
 
                 return (Core::ERROR_NONE);
@@ -1742,14 +1742,14 @@ namespace ProxyStubs {
         {
         }
 
-        uint32_t Register(Exchange::IConnectionProperties::INotification* _parameter_12decf06) override
+        uint32_t Register(Exchange::IConnectionProperties::INotification* _parameter_9d58f869) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(0));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_12decf06));
+            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_9d58f869));
 
-            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_12decf06), Exchange::IConnectionProperties::INotification::ID }, { 0, 0 } };
+            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_9d58f869), Exchange::IConnectionProperties::INotification::ID }, { 0, 0 } };
             static_cast<const ProxyStub::UnknownProxy&>(*this).Channel()->CustomData(passedInstances);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
@@ -1777,14 +1777,14 @@ namespace ProxyStubs {
             return (hresult);
         }
 
-        uint32_t Unregister(Exchange::IConnectionProperties::INotification* _parameter_35e48a39) override
+        uint32_t Unregister(Exchange::IConnectionProperties::INotification* _parameter_1c1b68ca) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(1));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_35e48a39));
+            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_1c1b68ca));
 
-            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_35e48a39), Exchange::IConnectionProperties::INotification::ID }, { 0, 0 } };
+            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_1c1b68ca), Exchange::IConnectionProperties::INotification::ID }, { 0, 0 } };
             static_cast<const ProxyStub::UnknownProxy&>(*this).Channel()->CustomData(passedInstances);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);

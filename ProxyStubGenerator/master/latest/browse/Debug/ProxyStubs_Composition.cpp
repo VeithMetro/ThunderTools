@@ -752,9 +752,9 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            const Exchange::IComposition::ScreenResolution _parameter_d5d48780 = reader.Number<Exchange::IComposition::ScreenResolution>();
+            const Exchange::IComposition::ScreenResolution _parameter_7d65f43e = reader.Number<Exchange::IComposition::ScreenResolution>();
 
-            uint32_t result = implementation->Resolution(_parameter_d5d48780);
+            uint32_t result = implementation->Resolution(_parameter_7d65f43e);
 
             RPC::Data::Frame::Writer writer(message->Response().Writer());
             writer.Number<uint32_t>(result);
@@ -1009,9 +1009,9 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            const Exchange::IComposition::ScreenResolution _parameter_25fdf6d8 = reader.Number<Exchange::IComposition::ScreenResolution>();
+            const Exchange::IComposition::ScreenResolution _parameter_8fb4b870 = reader.Number<Exchange::IComposition::ScreenResolution>();
 
-            uint32_t result = implementation->Resolution(_parameter_25fdf6d8);
+            uint32_t result = implementation->Resolution(_parameter_8fb4b870);
 
             RPC::Data::Frame::Writer writer(message->Response().Writer());
             writer.Number<uint32_t>(result);
@@ -1858,12 +1858,12 @@ namespace ProxyStubs {
             return (result);
         }
 
-        uint32_t Resolution(const Exchange::IComposition::ScreenResolution _parameter_d5d48780) override
+        uint32_t Resolution(const Exchange::IComposition::ScreenResolution _parameter_7d65f43e) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(3));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Exchange::IComposition::ScreenResolution>(_parameter_d5d48780);
+            writer.Number<Exchange::IComposition::ScreenResolution>(_parameter_7d65f43e);
 
             uint32_t result{};
 
@@ -2218,12 +2218,12 @@ namespace ProxyStubs {
             return (result);
         }
 
-        uint32_t Resolution(const Exchange::IComposition::ScreenResolution _parameter_25fdf6d8) override
+        uint32_t Resolution(const Exchange::IComposition::ScreenResolution _parameter_8fb4b870) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(3));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Exchange::IComposition::ScreenResolution>(_parameter_25fdf6d8);
+            writer.Number<Exchange::IComposition::ScreenResolution>(_parameter_8fb4b870);
 
             uint32_t result{};
 
