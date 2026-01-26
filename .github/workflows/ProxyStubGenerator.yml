@@ -39,9 +39,9 @@ jobs:
         artifact_name: 
           - "ThunderInterfaces-Debug-artifact"
           - "ThunderInterfaces-Release-artifact"
-
+    
     steps:
-      - name: Download Artifact
+      - name: Download ThunderInterfaces Artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
@@ -50,45 +50,72 @@ jobs:
       - name: Extract and Isolate Generated Files
         run: |
           set -euo pipefail
+          
+          # --- CONFIGURATION ---
+          # We look for these SPECIFIC paths inside the extracted structure.
+          # Note: The artifact likely contains a top-level folder (e.g., "Debug" or "Release")
+          # so we use wildcards or relative matching to find them.
+          PATHS_TO_HARVEST=(
+            "ThunderInterfaces/interfaces/generated"
+            "Thunder/Source/com/generated"
+            "Thunder/Source/core/generated"
+            "Thunder/Source/plugins/generated"
+          )
+          # ---------------------
 
-          # Clean variant name for directory structure (remove 'ThunderInterfaces-' prefix and '-artifact' suffix)
           VARIANT="${{ matrix.artifact_name }}"
           VARIANT="${VARIANT#ThunderInterfaces-}"
           VARIANT="${VARIANT%-artifact}"
+          
+          DEST_DIR="generated_proxies/$VARIANT"
+          mkdir -p "$DEST_DIR"
 
-          mkdir -p "generated_proxies/$VARIANT"
-
-          # Find the tarball
           TAR_FILE=$(find download_temp -name "*.tar.gz" | head -n 1)
-
           if [[ -z "$TAR_FILE" ]]; then
-            echo "::error::No tarball found in artifact ${{ matrix.artifact_name }}"
+            echo "::error::No tarball found"
             exit 1
           fi
 
-          # Extract to a temp dir to find the 'generated' folder
           mkdir -p temp_extract
           tar -xzf "$TAR_FILE" -C temp_extract
+          
+          echo "Scanning artifact for configured paths..."
+          
+          for REL_PATTERN in "${PATHS_TO_HARVEST[@]}"; do
+            echo "Searching for path suffix: $REL_PATTERN"
+            
+            # Use 'grep' to filter 'find' results for stronger matching
+            # We look for directories that end with our configured pattern
+            FOUND_PATHS=$(find temp_extract -type d | grep "${REL_PATTERN}$" || true)
+            
+            if [[ -z "$FOUND_PATHS" ]]; then
+              echo "::warning::Path suffix '$REL_PATTERN' not found in artifact."
+              continue
+            fi
 
-          # Locate 'generated' folder (looking for interfaces/generated pattern)
-          GEN_PATH=$(find temp_extract -type d -path "*/interfaces/generated" | head -n 1)
-
-          # Fallback search if standard path fails
-          if [[ -z "$GEN_PATH" ]]; then
-            GEN_PATH=$(find temp_extract -type d -name "generated" | grep "interfaces" | head -n 1)
+            echo "$FOUND_PATHS" | while read -r SRC; do
+              # Structure the output nicely.
+              # If we found ".../build/Thunder/Source/com/generated", we want output "Thunder/Source/com/generated"
+              
+              # We use the pattern itself as the destination structure to keep it recognized
+              # This ensures "Thunder/..." stays separate from "ThunderInterfaces/..."
+              SUB_DEST="$DEST_DIR/$REL_PATTERN"
+              
+              echo "  -> Found: $SRC"
+              echo "  -> Copying to: $SUB_DEST"
+              
+              mkdir -p "$SUB_DEST"
+              cp -r "$SRC"/* "$SUB_DEST/"
+            done
+          done
+          
+          # Verify results
+          if [[ -z "$(ls -A "$DEST_DIR")" ]]; then
+             echo "::error::No files extracted. Debugging structure:"
+             find temp_extract -maxdepth 4
+             exit 1
           fi
 
-          if [[ -z "$GEN_PATH" ]]; then
-            echo "::error::Could not locate 'generated' folder in ${{ matrix.artifact_name }}"
-            find temp_extract -maxdepth 4
-            exit 1
-          fi
-
-          echo "Found generated code at: $GEN_PATH"
-          # Copy content to our specific variant folder
-          cp -r "$GEN_PATH"/* "generated_proxies/$VARIANT/"
-
-          # Cleanup to save space
           rm -rf temp_extract download_temp
 
       - name: Upload Variant Proxy
@@ -97,6 +124,7 @@ jobs:
           name: ProxyStub-Output-${{ strategy.job-index }}
           path: generated_proxies/
           retention-days: 1
+
 
   publish_pages:
     runs-on: ubuntu-latest
