@@ -427,19 +427,19 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            Core::instance_id _parameter_60c17836InstanceId__ = reader.Number<Core::instance_id>();
+            Core::instance_id _parameter_53a87ebcInstanceId__ = reader.Number<Core::instance_id>();
 
-            Exchange::IStream::ICallback* _parameter_60c17836{};
-            ProxyStub::UnknownProxy* _parameter_60c17836Proxy__ = nullptr;
-            if (_parameter_60c17836InstanceId__ != 0) {
-                _parameter_60c17836Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_60c17836InstanceId__, false, _parameter_60c17836);
-                ASSERT((_parameter_60c17836 != nullptr) && (_parameter_60c17836Proxy__ != nullptr));
+            Exchange::IStream::ICallback* _parameter_53a87ebc{};
+            ProxyStub::UnknownProxy* _parameter_53a87ebcProxy__ = nullptr;
+            if (_parameter_53a87ebcInstanceId__ != 0) {
+                _parameter_53a87ebcProxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_53a87ebcInstanceId__, false, _parameter_53a87ebc);
+                ASSERT((_parameter_53a87ebc != nullptr) && (_parameter_53a87ebcProxy__ != nullptr));
             }
 
-            implementation->Callback(_parameter_60c17836);
+            implementation->Callback(_parameter_53a87ebc);
 
-            if (_parameter_60c17836Proxy__ != nullptr) {
-                RPC::Administrator::Instance().Release(_parameter_60c17836Proxy__, message->Response());
+            if (_parameter_53a87ebcProxy__ != nullptr) {
+                RPC::Administrator::Instance().Release(_parameter_53a87ebcProxy__, message->Response());
             }
         },
 
@@ -1452,12 +1452,12 @@ namespace ProxyStubs {
             return (result);
         }
 
-        void Callback(Exchange::IStream::ICallback* _parameter_60c17836) override
+        void Callback(Exchange::IStream::ICallback* _parameter_53a87ebc) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(4));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_60c17836));
+            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_53a87ebc));
 
             const Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {
