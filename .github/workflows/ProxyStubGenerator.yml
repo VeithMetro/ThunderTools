@@ -308,40 +308,68 @@ jobs:
         run: |
           set -euo pipefail
           
-          # Use intermediate file to safely pass data to Python
-          python - <<'PY' > payload.json
-          import json, sys
+          # We use a pure Python script to handle JSON escaping safely and print debug info
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          import sys
+
+          # 1. Read the diff safely
+          diff_path = "diffs/combined_trunc.diff"
           try:
-              with open("diffs/combined_trunc.diff", "r", encoding="utf-8", errors="ignore") as f:
+              with open(diff_path, "r", encoding="utf-8", errors="ignore") as f:
                   diff_text = f.read()
+          except Exception as e:
+              print(f"::warning::Could not read diff file: {e}")
+              sys.exit(0)
 
-              print(json.dumps({
-                  "model": "openai/gpt-4.1",
-                  "messages": [
-                      {"role": "system", "content": "You are a C++ expert. Summarize the changes in this diff. Start with bullet points."},
-                      {"role": "user", "content": diff_text}
-                  ],
-                  "temperature": 0.5
-              }))
-          except Exception:
-              print("{}")
-          PY
+          if not diff_text.strip():
+              print("::warning::Diff text is empty.")
+              sys.exit(0)
 
-          curl -sS -L \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Content-Type: application/json" \
-            https://models.github.ai/inference/chat/completions \
-            -d @payload.json -o response.json || true
-
-          summary=$(python -c "import json; print(json.load(open('response.json')).get('choices', [{}])[0].get('message', {}).get('content', ''))" 2>/dev/null || echo "")
+          # 2. Construct Payload
+          url = "https://models.github.ai/inference/chat/completions"
+          headers = {
+              "Content-Type": "application/json",
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept": "application/vnd.github+json" 
+          }
           
-          if [[ -n "$summary" ]]; then
-            {
-              echo "summary<<EOF"
-              echo "$summary"
-              echo "EOF"
-            } >> "$GITHUB_OUTPUT"
-          fi
+          payload = {
+              "model": "openai/gpt-4.1",
+              "messages": [
+                  {"role": "system", "content": "You are a C++ expert. Summarize the changes in this diff. Start with bullet points."},
+                  {"role": "user", "content": diff_text[:40000]}  # Ensure we don't exceed limits
+              ],
+              "temperature": 0.5
+          }
+
+          # 3. Send Request
+          try:
+              req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers)
+              with urllib.request.urlopen(req) as resp:
+                  data = json.load(resp)
+                  
+                  # Extract content safely
+                  summary = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                  
+                  if summary:
+                      # Write to GITHUB_OUTPUT safely using the new multiline syntax
+                      with open(os.environ["GITHUB_OUTPUT"], "a") as gh_out:
+                          gh_out.write("summary<<EOF\n")
+                          gh_out.write(summary + "\n")
+                          gh_out.write("EOF\n")
+                  else:
+                      print("::warning::AI returned empty content.")
+                      print(f"Debug response: {json.dumps(data)}")
+
+          except urllib.error.HTTPError as e:
+              print(f"::error::API Request failed: {e.code} {e.reason}")
+              print(e.read().decode("utf-8", errors="ignore"))
+          except Exception as e:
+              print(f"::error::Unexpected error: {e}")
+          PY
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
