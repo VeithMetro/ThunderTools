@@ -335,12 +335,15 @@ jobs:
               "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
               "Accept": "application/vnd.github+json" 
           }
-          
+
+          # SAFER LIMIT: 25,000 characters is roughly ~6-7k tokens, leaving room for the system prompt + response.
+          SAFE_LIMIT = 25000
+
           payload = {
-              "model": "openai/gpt-4.1",
+              "model": "openai/gpt-4.1", # Or try "gpt-4o" if available, it has a larger context
               "messages": [
                   {"role": "system", "content": "You are a C++ expert. Summarize the changes in this diff. Start with bullet points."},
-                  {"role": "user", "content": diff_text[:40000]}  # Ensure we don't exceed limits
+                  {"role": "user", "content": diff_text[:SAFE_LIMIT]} 
               ],
               "temperature": 0.5
           }
