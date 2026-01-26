@@ -261,9 +261,9 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<Exchange::IApplication::launchpointtype>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const Exchange::IApplication::launchpointtype _parameter_59f50809 = reader.Number<Exchange::IApplication::launchpointtype>();
+                const Exchange::IApplication::launchpointtype _parameter_95b59837 = reader.Number<Exchange::IApplication::launchpointtype>();
 
-                uint32_t result = implementation->LaunchPoint(static_cast<const Exchange::IApplication::launchpointtype&>(_parameter_59f50809));
+                uint32_t result = implementation->LaunchPoint(static_cast<const Exchange::IApplication::launchpointtype&>(_parameter_95b59837));
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Number<uint32_t>(result);
@@ -322,9 +322,9 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (1)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const bool _parameter_6d4efb16 = reader.Boolean();
+                const bool _parameter_64b3e04e = reader.Boolean();
 
-                uint32_t result = implementation->Visible(_parameter_6d4efb16);
+                uint32_t result = implementation->Visible(_parameter_64b3e04e);
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Number<uint32_t>(result);
@@ -383,11 +383,11 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_f34910c2PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_f34910c2PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_f34910c2 = reader.Text();
+                const uint16_t _parameter_2cc5392bPeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_2cc5392bPeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_2cc5392b = reader.Text();
 
-                uint32_t result = implementation->Language(static_cast<const string&>(_parameter_f34910c2));
+                uint32_t result = implementation->Language(static_cast<const string&>(_parameter_2cc5392b));
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Number<uint32_t>(result);
@@ -645,12 +645,12 @@ namespace ProxyStubs {
             return (hresult);
         }
 
-        uint32_t LaunchPoint(const Exchange::IApplication::launchpointtype& _parameter_59f50809) override
+        uint32_t LaunchPoint(const Exchange::IApplication::launchpointtype& _parameter_95b59837) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(6));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Exchange::IApplication::launchpointtype>(_parameter_59f50809);
+            writer.Number<Exchange::IApplication::launchpointtype>(_parameter_95b59837);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {
@@ -700,12 +700,12 @@ namespace ProxyStubs {
             return (hresult);
         }
 
-        uint32_t Visible(const bool _parameter_6d4efb16) override
+        uint32_t Visible(const bool _parameter_64b3e04e) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(8));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Boolean(_parameter_6d4efb16);
+            writer.Boolean(_parameter_64b3e04e);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {
@@ -757,12 +757,12 @@ namespace ProxyStubs {
             return (hresult);
         }
 
-        uint32_t Language(const string& _parameter_f34910c2) override
+        uint32_t Language(const string& _parameter_2cc5392b) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(10));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_f34910c2);
+            writer.Text(_parameter_2cc5392b);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {

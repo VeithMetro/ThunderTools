@@ -36,10 +36,10 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            const string _parameter_56069dd3 = reader.Text();
-            const string _parameter_deda2a6c = reader.Text();
+            const string _parameter_208c0a3c = reader.Text();
+            const string _parameter_a1139378 = reader.Text();
 
-            implementation->Launch(static_cast<const string&>(_parameter_56069dd3), static_cast<const string&>(_parameter_deda2a6c));
+            implementation->Launch(static_cast<const string&>(_parameter_208c0a3c), static_cast<const string&>(_parameter_a1139378));
         }
         , nullptr
     }; // ExchangePlayGigaStubMethods
@@ -62,13 +62,13 @@ namespace ProxyStubs {
         {
         }
 
-        void Launch(const string& _parameter_56069dd3, const string& _parameter_deda2a6c) override
+        void Launch(const string& _parameter_208c0a3c, const string& _parameter_a1139378) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(0));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_56069dd3);
-            writer.Text(_parameter_deda2a6c);
+            writer.Text(_parameter_208c0a3c);
+            writer.Text(_parameter_a1139378);
 
             static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
         }

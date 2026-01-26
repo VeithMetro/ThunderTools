@@ -715,15 +715,15 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_0a431b7dPeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_0a431b7dPeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_0a431b7d = reader.Text();
+                const uint16_t _parameter_af5536d0PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_af5536d0PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_af5536d0 = reader.Text();
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_1f6de011PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_1f6de011PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_1f6de011 = reader.Text();
+                const uint16_t _parameter_cf0d71d8PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_cf0d71d8PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_cf0d71d8 = reader.Text();
 
-                Exchange::OCDM_RESULT result = implementation->SetParameter(static_cast<const string&>(_parameter_0a431b7d), static_cast<const string&>(_parameter_1f6de011));
+                Exchange::OCDM_RESULT result = implementation->SetParameter(static_cast<const string&>(_parameter_af5536d0), static_cast<const string&>(_parameter_cf0d71d8));
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Number<Exchange::OCDM_RESULT>(result);
@@ -2540,13 +2540,13 @@ namespace ProxyStubs {
             static_cast<const ProxyStub::UnknownProxy&>(*this).Channel()->CustomData(nullptr);
         }
 
-        Exchange::OCDM_RESULT SetParameter(const string& _parameter_0a431b7d, const string& _parameter_1f6de011) override
+        Exchange::OCDM_RESULT SetParameter(const string& _parameter_af5536d0, const string& _parameter_cf0d71d8) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(13));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_0a431b7d);
-            writer.Text(_parameter_1f6de011);
+            writer.Text(_parameter_af5536d0);
+            writer.Text(_parameter_cf0d71d8);
 
             Exchange::OCDM_RESULT result{};
 
