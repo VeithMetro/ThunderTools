@@ -148,7 +148,7 @@ jobs:
           mkdir -p "site/$RUN_DIR"
           touch site/.nojekyll
 
-          # Move artifacts to a clean 'generated' structure
+          # Prepare 'generated' folder for diffing
           mkdir -p generated
           cp -r artifacts_all/* generated/
 
@@ -157,7 +157,6 @@ jobs:
             BASELINE_ROOT="${PWD}/ghpages_baseline/${TOOL_NAME}/master/latest_raw"
             mkdir -p diffs "site/$RUN_DIR/diff"
 
-            # Diff entire directory structure (handles multiple variants automatically)
             if [[ -d "$BASELINE_ROOT" ]]; then
                git diff --no-index \
                   --src-prefix=baseline/ \
@@ -185,39 +184,93 @@ jobs:
 
           echo "has_diff=$HAS_DIFF" >> "$GITHUB_OUTPUT"
 
-          # ----- Copy files for browsing -----
+          # ----- Copy generated files for browsing -----
           mkdir -p "site/$RUN_DIR/browse"
           cp -r generated/* "site/$RUN_DIR/browse/"
 
-          # ----- Index Page -----
-          cat > "site/$RUN_DIR/index.html" <<HTML
-          <!doctype html>
-          <html data-theme="dark">
-          <head>
-            <meta charset="utf-8">
-            <title>ProxyStubGenerator Results</title>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/picocss/1.5.7/pico.min.css">
-            <style>body{padding:2rem; max-width:800px; margin:0 auto;}</style>
-          </head>
-          <body>
-            <h1>ProxyStubGenerator Output</h1>
-            <nav>
-              <ul>
-                <li><a href="./browse/">Browse Files</a></li>
-                ${HAS_DIFF == "true" ? '<li><a href="./diff/index.html">View Diff vs Master</a></li>' : ''}
-              </ul>
-            </nav>
-            <article>
-              <h3>Build Variants</h3>
-              <ul>
-                <!-- Dynamically list folders found in browse/ -->
-                $(ls generated | sed 's/^/<li>/' | sed 's/$/<\/li>/')
-              </ul>
-            </article>
-            <footer>Run ID: ${{ github.run_id }}</footer>
-          </body>
-          </html>
-          HTML
+          # ----- Generate Site -----
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import html
+
+          run_dir = os.environ["RUN_DIR"]
+          site_root = Path("site") / run_dir
+          browse_root = site_root / "browse"
+
+          # Generate Dark Theme CSS
+          css_path = site_root / "assets" / "style.css"
+          css_path.parent.mkdir(parents=True, exist_ok=True)
+          css_path.write_text("""
+          :root{color-scheme:dark;--bg:#0d1117;--fg:#c9d1d9;--muted:#8b949e;--link:#58a6ff;--border:#30363d;--card:#161b22;}
+          body{margin:0;font:18px/1.55 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--fg)}
+          a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+          .container{max-width:1100px;margin:0 auto;padding:24px}
+          .nav{display:flex;gap:14px;padding:14px 24px;border-bottom:1px solid var(--border);background:rgba(13,17,23,.95);position:sticky;top:0}
+          .nav a{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--card)}
+          ul{list-style:none;padding:0} li{padding:4px 0}
+          """, encoding="utf-8")
+
+          def nav_html(rel_home):
+              has_diff = os.environ.get("HAS_DIFF") == "true"
+              links = [f"<a href='{rel_home}index.html'>Home</a>", f"<a href='{rel_home}browse/index.html'>Browse Files</a>"]
+              if has_diff:
+                  links.append(f"<a href='{rel_home}diff/index.html'>View Diff</a>")
+              return "".join(links)
+
+          def wrap_page(title, body, rel_path=""):
+              return f"""<!doctype html>
+              <html><head><meta charset='utf-8'><title>{title}</title>
+              <link rel='stylesheet' href='{rel_path}assets/style.css'>
+              </head><body>
+              <div class='nav'>{nav_html(rel_path)}</div>
+              <div class='container'>{body}</div>
+              </body></html>"""
+
+          # Recursive Directory Listing
+          def generate_index(directory, relative_to_root):
+              # relative_to_root is like "../" or "../../"
+              items = sorted(directory.iterdir(), key=lambda p: (p.is_file(), p.name))
+              links = []
+
+              if directory != browse_root:
+                  links.append(f"<li><a href='../index.html'>.. (Parent Directory)</a></li>")
+
+              for item in items:
+                  if item.name == "index.html": continue
+                  name = item.name + ("/" if item.is_dir() else "")
+                  href = item.name + ("/index.html" if item.is_dir() else "")
+                  links.append(f"<li><a href='{href}'>{name}</a></li>")
+
+              body = f"<h1>Index of {html.escape(directory.name)}</h1><ul>{''.join(links)}</ul>"
+
+              # Calculate path back to assets
+              depth = len(directory.relative_to(site_root).parts)
+              rel_assets = "../" * depth
+
+              (directory / "index.html").write_text(wrap_page(directory.name, body, rel_assets), encoding="utf-8")
+
+              for item in items:
+                  if item.is_dir():
+                      generate_index(item, relative_to_root)
+
+          if browse_root.exists():
+              generate_index(browse_root, "")
+
+          # Main Landing Page
+          main_body = """
+          <h1>ProxyStubGenerator Results</h1>
+          <p>Generated proxy and stub code from ThunderInterfaces build.</p>
+          <ul>
+            <li><a href='./browse/index.html'>Browse Generated Code</a></li>
+          """
+          if os.environ.get("HAS_DIFF") == "true":
+              main_body += "<li><a href='./diff/index.html'>View Diff vs Master</a></li>"
+          
+          main_body += "</ul>"
+          (site_root / "index.html").write_text(wrap_page("ProxyStub Results", main_body, ""), encoding="utf-8")
+
+          PY
 
           # ----- Master Push: Update Baseline -----
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
@@ -247,9 +300,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
+          
+          # Use intermediate file to safely pass data to Python
           python - <<'PY' > payload.json
-          import json
+          import json, sys
           try:
               with open("diffs/combined_trunc.diff", "r", encoding="utf-8", errors="ignore") as f:
                   diff_text = f.read()
@@ -273,7 +327,7 @@ jobs:
             -d @payload.json -o response.json || true
 
           summary=$(python -c "import json; print(json.load(open('response.json')).get('choices', [{}])[0].get('message', {}).get('content', ''))" 2>/dev/null || echo "")
-
+          
           if [[ -n "$summary" ]]; then
             {
               echo "summary<<EOF"
