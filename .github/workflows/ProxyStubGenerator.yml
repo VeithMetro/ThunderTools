@@ -52,9 +52,6 @@ jobs:
           set -euo pipefail
           
           # --- CONFIGURATION ---
-          # We look for these SPECIFIC paths inside the extracted structure.
-          # Note: The artifact likely contains a top-level folder (e.g., "Debug" or "Release")
-          # so we use wildcards or relative matching to find them.
           PATHS_TO_HARVEST=(
             "ThunderInterfaces/interfaces/generated"
             "Thunder/Source/com/generated"
