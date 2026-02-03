@@ -51,7 +51,7 @@
       "type": "object"
     },
     "methods": {
-      "description": "Definitions of the available procedures in the API. A key equals to the name of a procedure",
+      "description": "TEST Definitions of the available procedures in the API. A key equals to the name of a procedure",
       "type": "object",
       "patternProperties": {
         "^.*$": {
