@@ -153,9 +153,9 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            const Exchange::IApplication::launchpointtype _parameter_0e1994ed = reader.Number<Exchange::IApplication::launchpointtype>();
+            const Exchange::IApplication::launchpointtype _parameter_98d9b8f6 = reader.Number<Exchange::IApplication::launchpointtype>();
 
-            uint32_t result = implementation->LaunchPoint(static_cast<const Exchange::IApplication::launchpointtype&>(_parameter_0e1994ed));
+            uint32_t result = implementation->LaunchPoint(static_cast<const Exchange::IApplication::launchpointtype&>(_parameter_98d9b8f6));
 
             RPC::Data::Frame::Writer writer(message->Response().Writer());
             writer.Number<uint32_t>(result);
@@ -183,9 +183,9 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            const bool _parameter_c0e0ed5e = reader.Boolean();
+            const bool _parameter_9ace636f = reader.Boolean();
 
-            uint32_t result = implementation->Visible(_parameter_c0e0ed5e);
+            uint32_t result = implementation->Visible(_parameter_9ace636f);
 
             RPC::Data::Frame::Writer writer(message->Response().Writer());
             writer.Number<uint32_t>(result);
@@ -213,9 +213,9 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            const string _parameter_18e352e1 = reader.Text();
+            const string _parameter_1c5864fb = reader.Text();
 
-            uint32_t result = implementation->Language(static_cast<const string&>(_parameter_18e352e1));
+            uint32_t result = implementation->Language(static_cast<const string&>(_parameter_1c5864fb));
 
             RPC::Data::Frame::Writer writer(message->Response().Writer());
             writer.Number<uint32_t>(result);
@@ -375,12 +375,12 @@ namespace ProxyStubs {
             return (hresult);
         }
 
-        uint32_t LaunchPoint(const Exchange::IApplication::launchpointtype& _parameter_0e1994ed) override
+        uint32_t LaunchPoint(const Exchange::IApplication::launchpointtype& _parameter_98d9b8f6) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(6));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Exchange::IApplication::launchpointtype>(_parameter_0e1994ed);
+            writer.Number<Exchange::IApplication::launchpointtype>(_parameter_98d9b8f6);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {
@@ -409,12 +409,12 @@ namespace ProxyStubs {
             return (hresult);
         }
 
-        uint32_t Visible(const bool _parameter_c0e0ed5e) override
+        uint32_t Visible(const bool _parameter_9ace636f) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(8));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Boolean(_parameter_c0e0ed5e);
+            writer.Boolean(_parameter_9ace636f);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {
@@ -443,12 +443,12 @@ namespace ProxyStubs {
             return (hresult);
         }
 
-        uint32_t Language(const string& _parameter_18e352e1) override
+        uint32_t Language(const string& _parameter_1c5864fb) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(10));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_18e352e1);
+            writer.Text(_parameter_1c5864fb);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {

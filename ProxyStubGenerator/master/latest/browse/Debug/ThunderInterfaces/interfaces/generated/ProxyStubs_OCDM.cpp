@@ -391,10 +391,10 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            const string _parameter_4ac2dd92 = reader.Text();
-            const string _parameter_889e41b2 = reader.Text();
+            const string _parameter_ef50ef6f = reader.Text();
+            const string _parameter_93b5e947 = reader.Text();
 
-            Exchange::OCDM_RESULT result = implementation->SetParameter(static_cast<const string&>(_parameter_4ac2dd92), static_cast<const string&>(_parameter_889e41b2));
+            Exchange::OCDM_RESULT result = implementation->SetParameter(static_cast<const string&>(_parameter_ef50ef6f), static_cast<const string&>(_parameter_93b5e947));
 
             RPC::Data::Frame::Writer writer(message->Response().Writer());
             writer.Number<Exchange::OCDM_RESULT>(result);
@@ -1410,13 +1410,13 @@ namespace ProxyStubs {
             }
         }
 
-        Exchange::OCDM_RESULT SetParameter(const string& _parameter_4ac2dd92, const string& _parameter_889e41b2) override
+        Exchange::OCDM_RESULT SetParameter(const string& _parameter_ef50ef6f, const string& _parameter_93b5e947) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(13));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_4ac2dd92);
-            writer.Text(_parameter_889e41b2);
+            writer.Text(_parameter_ef50ef6f);
+            writer.Text(_parameter_93b5e947);
 
             Exchange::OCDM_RESULT result{};
 

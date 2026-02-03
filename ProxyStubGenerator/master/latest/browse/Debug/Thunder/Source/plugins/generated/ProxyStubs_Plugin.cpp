@@ -259,22 +259,22 @@ namespace ProxyStubs {
             ASSERT(implementation != nullptr);
 
             RPC::Data::Frame::Reader reader(message->Parameters().Reader());
-            Core::instance_id _parameter_0b1a189eInstanceId__ = reader.Number<Core::instance_id>();
+            Core::instance_id _parameter_06313df4InstanceId__ = reader.Number<Core::instance_id>();
 
-            ICompositPlugin::ICallback* _parameter_0b1a189e{};
-            ProxyStub::UnknownProxy* _parameter_0b1a189eProxy__ = nullptr;
-            if (_parameter_0b1a189eInstanceId__ != 0) {
-                _parameter_0b1a189eProxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_0b1a189eInstanceId__, false, _parameter_0b1a189e);
-                ASSERT((_parameter_0b1a189e != nullptr) && (_parameter_0b1a189eProxy__ != nullptr));
+            ICompositPlugin::ICallback* _parameter_06313df4{};
+            ProxyStub::UnknownProxy* _parameter_06313df4Proxy__ = nullptr;
+            if (_parameter_06313df4InstanceId__ != 0) {
+                _parameter_06313df4Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_06313df4InstanceId__, false, _parameter_06313df4);
+                ASSERT((_parameter_06313df4 != nullptr) && (_parameter_06313df4Proxy__ != nullptr));
             }
 
-            uint32_t result = implementation->Callback(_parameter_0b1a189e);
+            uint32_t result = implementation->Callback(_parameter_06313df4);
 
             RPC::Data::Frame::Writer writer(message->Response().Writer());
             writer.Number<uint32_t>(result);
 
-            if (_parameter_0b1a189eProxy__ != nullptr) {
-                RPC::Administrator::Instance().Release(_parameter_0b1a189eProxy__, message->Response());
+            if (_parameter_06313df4Proxy__ != nullptr) {
+                RPC::Administrator::Instance().Release(_parameter_06313df4Proxy__, message->Response());
             }
         }
         , nullptr
@@ -736,12 +736,12 @@ namespace ProxyStubs {
         {
         }
 
-        uint32_t Callback(ICompositPlugin::ICallback* _parameter_0b1a189e) override
+        uint32_t Callback(ICompositPlugin::ICallback* _parameter_06313df4) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(0));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_0b1a189e));
+            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_06313df4));
 
             uint32_t result{};
 

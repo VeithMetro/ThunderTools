@@ -61,23 +61,23 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (sizeof(Core::instance_id))) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                Core::instance_id _parameter_c7599481InstanceId__ = reader.Number<Core::instance_id>();
+                Core::instance_id _parameter_43fed43cInstanceId__ = reader.Number<Core::instance_id>();
 
-                PluginHost::IShell* _parameter_c7599481{};
-                ProxyStub::UnknownProxy* _parameter_c7599481Proxy__ = nullptr;
-                if (_parameter_c7599481InstanceId__ != 0) {
-                    _parameter_c7599481Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_c7599481InstanceId__, false, _parameter_c7599481);
-                    ASSERT((_parameter_c7599481 != nullptr) && (_parameter_c7599481Proxy__ != nullptr));
-                    if ((_parameter_c7599481 == nullptr) || (_parameter_c7599481Proxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
+                PluginHost::IShell* _parameter_43fed43c{};
+                ProxyStub::UnknownProxy* _parameter_43fed43cProxy__ = nullptr;
+                if (_parameter_43fed43cInstanceId__ != 0) {
+                    _parameter_43fed43cProxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_43fed43cInstanceId__, false, _parameter_43fed43c);
+                    ASSERT((_parameter_43fed43c != nullptr) && (_parameter_43fed43cProxy__ != nullptr));
+                    if ((_parameter_43fed43c == nullptr) || (_parameter_43fed43cProxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
                 }
 
-                uint32_t result = implementation->StartParser(_parameter_c7599481);
+                uint32_t result = implementation->StartParser(_parameter_43fed43c);
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Number<uint32_t>(result);
 
-                if (_parameter_c7599481Proxy__ != nullptr) {
-                    RPC::Administrator::Instance().Release(_parameter_c7599481Proxy__, message->Response());
+                if (_parameter_43fed43cProxy__ != nullptr) {
+                    RPC::Administrator::Instance().Release(_parameter_43fed43cProxy__, message->Response());
                 }
 
                 return (Core::ERROR_NONE);
@@ -155,11 +155,11 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_ab053378PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_ab053378PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_ab053378 = reader.Text();
+                const uint16_t _parameter_becff5d9PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_becff5d9PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_becff5d9 = reader.Text();
 
-                const string result = implementation->GetCurrentProgram(static_cast<const string&>(_parameter_ab053378));
+                const string result = implementation->GetCurrentProgram(static_cast<const string&>(_parameter_becff5d9));
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Text(result);
@@ -187,9 +187,9 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint32_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint32_t _parameter_8907dbcc = reader.Number<uint32_t>();
+                const uint32_t _parameter_d6ed5c46 = reader.Number<uint32_t>();
 
-                const string result = implementation->GetAudioLanguages(_parameter_8907dbcc);
+                const string result = implementation->GetAudioLanguages(_parameter_d6ed5c46);
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Text(result);
@@ -217,9 +217,9 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint32_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint32_t _parameter_739346d7 = reader.Number<uint32_t>();
+                const uint32_t _parameter_b737df68 = reader.Number<uint32_t>();
 
-                const string result = implementation->GetSubtitleLanguages(_parameter_739346d7);
+                const string result = implementation->GetSubtitleLanguages(_parameter_b737df68);
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Text(result);
@@ -247,15 +247,15 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_88052381PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_88052381PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_88052381 = reader.Text();
+                const uint16_t _parameter_c20c7230PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_c20c7230PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_c20c7230 = reader.Text();
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_83881d16PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_83881d16PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_83881d16 = reader.Text();
+                const uint16_t _parameter_e2d35be7PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_e2d35be7PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_e2d35be7 = reader.Text();
 
-                bool result = implementation->SetParentalControlPin(static_cast<const string&>(_parameter_88052381), static_cast<const string&>(_parameter_83881d16));
+                bool result = implementation->SetParentalControlPin(static_cast<const string&>(_parameter_c20c7230), static_cast<const string&>(_parameter_e2d35be7));
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Boolean(result);
@@ -283,13 +283,13 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_5e6b46eaPeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_5e6b46eaPeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_5e6b46ea = reader.Text();
+                const uint16_t _parameter_1467e918PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_1467e918PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_1467e918 = reader.Text();
                 if (reader.Length() < (1)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const bool _parameter_e037d644 = reader.Boolean();
+                const bool _parameter_53922d6c = reader.Boolean();
 
-                bool result = implementation->SetParentalControl(static_cast<const string&>(_parameter_5e6b46ea), _parameter_e037d644);
+                bool result = implementation->SetParentalControl(static_cast<const string&>(_parameter_1467e918), _parameter_53922d6c);
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Boolean(result);
@@ -343,17 +343,17 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_84a34194PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_84a34194PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_84a34194 = reader.Text();
+                const uint16_t _parameter_e26bacdePeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_e26bacdePeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_e26bacde = reader.Text();
                 if (reader.Length() < (1)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const bool _parameter_87ecd341 = reader.Boolean();
+                const bool _parameter_e5a556eb = reader.Boolean();
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_cf244c43PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_cf244c43PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_cf244c43 = reader.Text();
+                const uint16_t _parameter_0e9afc0fPeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_0e9afc0fPeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_0e9afc0f = reader.Text();
 
-                bool result = implementation->SetParentalLock(static_cast<const string&>(_parameter_84a34194), _parameter_87ecd341, static_cast<const string&>(_parameter_cf244c43));
+                bool result = implementation->SetParentalLock(static_cast<const string&>(_parameter_e26bacde), _parameter_e5a556eb, static_cast<const string&>(_parameter_0e9afc0f));
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Boolean(result);
@@ -381,11 +381,11 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_31c47626PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_31c47626PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_31c47626 = reader.Text();
+                const uint16_t _parameter_337351d1PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_337351d1PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_337351d1 = reader.Text();
 
-                bool result = implementation->IsParentalLocked(static_cast<const string&>(_parameter_31c47626));
+                bool result = implementation->IsParentalLocked(static_cast<const string&>(_parameter_337351d1));
 
                 RPC::Data::Frame::Writer writer(message->Response().Writer());
                 writer.Boolean(result);
@@ -413,20 +413,20 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (sizeof(Core::instance_id))) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                Core::instance_id _parameter_8cd338a5InstanceId__ = reader.Number<Core::instance_id>();
+                Core::instance_id _parameter_33ec24f0InstanceId__ = reader.Number<Core::instance_id>();
 
-                Exchange::IGuide::INotification* _parameter_8cd338a5{};
-                ProxyStub::UnknownProxy* _parameter_8cd338a5Proxy__ = nullptr;
-                if (_parameter_8cd338a5InstanceId__ != 0) {
-                    _parameter_8cd338a5Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_8cd338a5InstanceId__, false, _parameter_8cd338a5);
-                    ASSERT((_parameter_8cd338a5 != nullptr) && (_parameter_8cd338a5Proxy__ != nullptr));
-                    if ((_parameter_8cd338a5 == nullptr) || (_parameter_8cd338a5Proxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
+                Exchange::IGuide::INotification* _parameter_33ec24f0{};
+                ProxyStub::UnknownProxy* _parameter_33ec24f0Proxy__ = nullptr;
+                if (_parameter_33ec24f0InstanceId__ != 0) {
+                    _parameter_33ec24f0Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_33ec24f0InstanceId__, false, _parameter_33ec24f0);
+                    ASSERT((_parameter_33ec24f0 != nullptr) && (_parameter_33ec24f0Proxy__ != nullptr));
+                    if ((_parameter_33ec24f0 == nullptr) || (_parameter_33ec24f0Proxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
                 }
 
-                implementation->Register(_parameter_8cd338a5);
+                implementation->Register(_parameter_33ec24f0);
 
-                if (_parameter_8cd338a5Proxy__ != nullptr) {
-                    RPC::Administrator::Instance().Release(_parameter_8cd338a5Proxy__, message->Response());
+                if (_parameter_33ec24f0Proxy__ != nullptr) {
+                    RPC::Administrator::Instance().Release(_parameter_33ec24f0Proxy__, message->Response());
                 }
 
                 return (Core::ERROR_NONE);
@@ -452,20 +452,20 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (sizeof(Core::instance_id))) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                Core::instance_id _parameter_460025faInstanceId__ = reader.Number<Core::instance_id>();
+                Core::instance_id _parameter_52de89b9InstanceId__ = reader.Number<Core::instance_id>();
 
-                Exchange::IGuide::INotification* _parameter_460025fa{};
-                ProxyStub::UnknownProxy* _parameter_460025faProxy__ = nullptr;
-                if (_parameter_460025faInstanceId__ != 0) {
-                    _parameter_460025faProxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_460025faInstanceId__, false, _parameter_460025fa);
-                    ASSERT((_parameter_460025fa != nullptr) && (_parameter_460025faProxy__ != nullptr));
-                    if ((_parameter_460025fa == nullptr) || (_parameter_460025faProxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
+                Exchange::IGuide::INotification* _parameter_52de89b9{};
+                ProxyStub::UnknownProxy* _parameter_52de89b9Proxy__ = nullptr;
+                if (_parameter_52de89b9InstanceId__ != 0) {
+                    _parameter_52de89b9Proxy__ = RPC::Administrator::Instance().ProxyInstance(channel, _parameter_52de89b9InstanceId__, false, _parameter_52de89b9);
+                    ASSERT((_parameter_52de89b9 != nullptr) && (_parameter_52de89b9Proxy__ != nullptr));
+                    if ((_parameter_52de89b9 == nullptr) || (_parameter_52de89b9Proxy__ == nullptr)) { return (COM_ERROR | Core::ERROR_NOT_EXIST); }
                 }
 
-                implementation->Unregister(_parameter_460025fa);
+                implementation->Unregister(_parameter_52de89b9);
 
-                if (_parameter_460025faProxy__ != nullptr) {
-                    RPC::Administrator::Instance().Release(_parameter_460025faProxy__, message->Response());
+                if (_parameter_52de89b9Proxy__ != nullptr) {
+                    RPC::Administrator::Instance().Release(_parameter_52de89b9Proxy__, message->Response());
                 }
 
                 return (Core::ERROR_NONE);
@@ -574,11 +574,11 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_b28738fdPeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_b28738fdPeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_b28738fd = reader.Text();
+                const uint16_t _parameter_5f487dc0PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_5f487dc0PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_5f487dc0 = reader.Text();
 
-                implementation->ParentalLockChanged(static_cast<const string&>(_parameter_b28738fd));
+                implementation->ParentalLockChanged(static_cast<const string&>(_parameter_5f487dc0));
 
                 return (Core::ERROR_NONE);
             } ();
@@ -603,11 +603,11 @@ namespace ProxyStubs {
 
                 RPC::Data::Frame::Reader reader(message->Parameters().Reader());
                 if (reader.Length() < (Core::RealSize<uint16_t>())) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const uint16_t _parameter_19e57892PeekedLen__ = reader.PeekNumber<uint16_t>();
-                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_19e57892PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
-                const string _parameter_19e57892 = reader.Text();
+                const uint16_t _parameter_e6a760f2PeekedLen__ = reader.PeekNumber<uint16_t>();
+                if (reader.Length() < (static_cast<uint32_t>(Core::RealSize<uint16_t>()) + _parameter_e6a760f2PeekedLen__)) { return (COM_ERROR | Core::ERROR_READ_ERROR); }
+                const string _parameter_e6a760f2 = reader.Text();
 
-                implementation->TestNotification(static_cast<const string&>(_parameter_19e57892));
+                implementation->TestNotification(static_cast<const string&>(_parameter_e6a760f2));
 
                 return (Core::ERROR_NONE);
             } ();
@@ -650,14 +650,14 @@ namespace ProxyStubs {
         {
         }
 
-        uint32_t StartParser(PluginHost::IShell* _parameter_c7599481) override
+        uint32_t StartParser(PluginHost::IShell* _parameter_43fed43c) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(0));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_c7599481));
+            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_43fed43c));
 
-            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_c7599481), PluginHost::IShell::ID }, { 0, 0 } };
+            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_43fed43c), PluginHost::IShell::ID }, { 0, 0 } };
             static_cast<const ProxyStub::UnknownProxy&>(*this).Channel()->CustomData(passedInstances);
 
             uint32_t result{};
@@ -746,12 +746,12 @@ namespace ProxyStubs {
             return (result);
         }
 
-        const string GetCurrentProgram(const string& _parameter_ab053378) override
+        const string GetCurrentProgram(const string& _parameter_becff5d9) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(3));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_ab053378);
+            writer.Text(_parameter_becff5d9);
 
             string result{};
 
@@ -778,12 +778,12 @@ namespace ProxyStubs {
             return (result);
         }
 
-        const string GetAudioLanguages(const uint32_t _parameter_8907dbcc) override
+        const string GetAudioLanguages(const uint32_t _parameter_d6ed5c46) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(4));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<uint32_t>(_parameter_8907dbcc);
+            writer.Number<uint32_t>(_parameter_d6ed5c46);
 
             string result{};
 
@@ -810,12 +810,12 @@ namespace ProxyStubs {
             return (result);
         }
 
-        const string GetSubtitleLanguages(const uint32_t _parameter_739346d7) override
+        const string GetSubtitleLanguages(const uint32_t _parameter_b737df68) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(5));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<uint32_t>(_parameter_739346d7);
+            writer.Number<uint32_t>(_parameter_b737df68);
 
             string result{};
 
@@ -842,13 +842,13 @@ namespace ProxyStubs {
             return (result);
         }
 
-        bool SetParentalControlPin(const string& _parameter_88052381, const string& _parameter_83881d16) override
+        bool SetParentalControlPin(const string& _parameter_c20c7230, const string& _parameter_e2d35be7) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(6));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_88052381);
-            writer.Text(_parameter_83881d16);
+            writer.Text(_parameter_c20c7230);
+            writer.Text(_parameter_e2d35be7);
 
             bool result{};
 
@@ -873,13 +873,13 @@ namespace ProxyStubs {
             return (result);
         }
 
-        bool SetParentalControl(const string& _parameter_5e6b46ea, const bool _parameter_e037d644) override
+        bool SetParentalControl(const string& _parameter_1467e918, const bool _parameter_53922d6c) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(7));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_5e6b46ea);
-            writer.Boolean(_parameter_e037d644);
+            writer.Text(_parameter_1467e918);
+            writer.Boolean(_parameter_53922d6c);
 
             bool result{};
 
@@ -931,14 +931,14 @@ namespace ProxyStubs {
             return (result);
         }
 
-        bool SetParentalLock(const string& _parameter_84a34194, const bool _parameter_87ecd341, const string& _parameter_cf244c43) override
+        bool SetParentalLock(const string& _parameter_e26bacde, const bool _parameter_e5a556eb, const string& _parameter_0e9afc0f) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(9));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_84a34194);
-            writer.Boolean(_parameter_87ecd341);
-            writer.Text(_parameter_cf244c43);
+            writer.Text(_parameter_e26bacde);
+            writer.Boolean(_parameter_e5a556eb);
+            writer.Text(_parameter_0e9afc0f);
 
             bool result{};
 
@@ -963,12 +963,12 @@ namespace ProxyStubs {
             return (result);
         }
 
-        bool IsParentalLocked(const string& _parameter_31c47626) override
+        bool IsParentalLocked(const string& _parameter_337351d1) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(10));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_31c47626);
+            writer.Text(_parameter_337351d1);
 
             bool result{};
 
@@ -993,14 +993,14 @@ namespace ProxyStubs {
             return (result);
         }
 
-        void Register(Exchange::IGuide::INotification* _parameter_8cd338a5) override
+        void Register(Exchange::IGuide::INotification* _parameter_33ec24f0) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(11));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_8cd338a5));
+            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_33ec24f0));
 
-            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_8cd338a5), Exchange::IGuide::INotification::ID }, { 0, 0 } };
+            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_33ec24f0), Exchange::IGuide::INotification::ID }, { 0, 0 } };
             static_cast<const ProxyStub::UnknownProxy&>(*this).Channel()->CustomData(passedInstances);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
@@ -1025,14 +1025,14 @@ namespace ProxyStubs {
             static_cast<const ProxyStub::UnknownProxy&>(*this).Channel()->CustomData(nullptr);
         }
 
-        void Unregister(Exchange::IGuide::INotification* _parameter_460025fa) override
+        void Unregister(Exchange::IGuide::INotification* _parameter_52de89b9) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(12));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_460025fa));
+            writer.Number<Core::instance_id>(RPC::instance_cast(_parameter_52de89b9));
 
-            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_460025fa), Exchange::IGuide::INotification::ID }, { 0, 0 } };
+            const RPC::InstanceRecord passedInstances[] = { { RPC::instance_cast(_parameter_52de89b9), Exchange::IGuide::INotification::ID }, { 0, 0 } };
             static_cast<const ProxyStub::UnknownProxy&>(*this).Channel()->CustomData(passedInstances);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
@@ -1161,12 +1161,12 @@ namespace ProxyStubs {
             }
         }
 
-        void ParentalLockChanged(const string& _parameter_b28738fd) override
+        void ParentalLockChanged(const string& _parameter_5f487dc0) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(3));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_b28738fd);
+            writer.Text(_parameter_5f487dc0);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {
@@ -1184,12 +1184,12 @@ namespace ProxyStubs {
             }
         }
 
-        void TestNotification(const string& _parameter_19e57892) override
+        void TestNotification(const string& _parameter_e6a760f2) override
         {
             IPCMessage message(static_cast<const ProxyStub::UnknownProxy&>(*this).Message(4));
 
             RPC::Data::Frame::Writer writer(message->Parameters().Writer());
-            writer.Text(_parameter_19e57892);
+            writer.Text(_parameter_e6a760f2);
 
             Core::hresult hresult = static_cast<const ProxyStub::UnknownProxy&>(*this).Invoke(message);
             if (hresult == Core::ERROR_NONE) {
