@@ -18,7 +18,7 @@
             "type": "string"
           },
           "comment": {
-            "description": "Comment on the changes.",
+            "description": "TEST Comment on the changes.",
             "type": "string"
           }
         },
