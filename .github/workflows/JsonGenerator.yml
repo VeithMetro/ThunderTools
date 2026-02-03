@@ -53,6 +53,8 @@ jobs:
           # ----- Paths to the generated JSON files -----
           PATHS_TO_HARVEST=(
             "ThunderInterfaces/definitions/generated"
+            "ThunderInterfaces/definitions/qa_generated"
+            "ThunderInterfaces/definitions/example_generated"
             "Thunder/Source/plugins/json"
           )
 
