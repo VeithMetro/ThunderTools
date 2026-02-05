@@ -546,7 +546,7 @@ class Identifier():
                 elif tag == "ENCODEHEX":
                     self.meta.decorators.append("encode:hex")
                 elif tag == "ENCODEIP":
-                    self.meta.decorators.append("encode:ip")
+                    self.meta.decorators.append("encode:ipTEST")
                 elif tag == "ENCODEMAC":
                     self.meta.decorators.append("encode:mac")
                 elif tag == "OPTIONAL":
