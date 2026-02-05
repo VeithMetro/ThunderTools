@@ -548,7 +548,7 @@ class Identifier():
                     self.meta.default = string[i + 1]
                     skip = 1
                 elif tag == "OPAQUE":
-                    self.meta.decorators.append("opaque")
+                    self.meta.decorators.append("opaqueTEST")
                 elif tag == "ENCODEBASE64":
                     self.meta.decorators.append("encode:base64")
                 elif tag == "ENCODEHEX":
