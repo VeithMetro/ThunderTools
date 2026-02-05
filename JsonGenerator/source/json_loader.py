@@ -35,6 +35,8 @@ import header_loader
 import trackers
 
 
+RESERVED_NAMES = ["exists", "versions", "register", "unregister"]
+
 log = None
 def SetLogger(logger):
     global log
@@ -349,12 +351,16 @@ class JsonInteger(JsonNative, JsonFundamental, JsonType):
         JsonType.__init__(self, name, parent, schema)
         self.size = schema["size"] if "size" in schema else size
 
-        if self.size != 8 and self.size != 16 and self.size != 32 and self.size != 64:
+        if self.size != 8 and self.size != 16 and self.size != 24 and self.size != 32 and self.size != 64:
             raise JsonParseError("Invalid integer number size: '%s'" % self.print_name)
 
         self.signed = schema["signed"] if "signed" in schema else signed
-        self.__cpp_class = CoreJson("Dec%sInt%i" % ("S" if self.signed else "U", self.size))
-        self.__cpp_native_type = "%sint%i_t" % ("" if self.signed else "u", self.size)
+        self.__cpp_class = CoreJson("Dec%sInt%i" % ("S" if self.signed else "U", self.size if self.size != 24 else 32))
+
+        if self.size == 24:
+            self.__cpp_native_type = "Core::Int24" if self.signed else "Core::UInt24"
+        else:
+            self.__cpp_native_type = "%sint%i_t" % ("" if self.signed else "u", self.size)
 
     @property
     def cpp_class(self):
@@ -880,6 +886,8 @@ class JsonMethod(JsonObject):
 
         self.endpoint_name = (config.IMPL_ENDPOINT_PREFIX + super().json_name)
 
+        self._Check()
+
         if (self.rpc_format == config.RpcFormat.COMPLIANT) and not isinstance(self.params, (JsonObject, JsonNull)):
             raise JsonParseError("With 'compliant' format parameters to a method or event need to be an object: '%s'" % self.print_name)
         elif (self.rpc_format == config.RpcFormat.EXTENDED) and not property and not isinstance(self.params, (JsonObject, JsonArray, JsonNull)):
@@ -901,6 +909,10 @@ class JsonMethod(JsonObject):
 
                         event = JsonNotification(self.json_name, self.parent, prop.schema["@async"], included)
                         self.callback = JsonCallback(self.json_name, self.parent, event, prop.schema["@async"], included)
+
+    def _Check(self):
+        if self.name.lower() in RESERVED_NAMES:
+            raise JsonParseError("Method/property name '%s' is reserved and cannot be used in a JSON-RPC interface" % self.name)
 
     @property
     def rpc_format(self):
@@ -958,6 +970,9 @@ class JsonNotification(JsonMethod):
             if not isinstance(param,JsonNative) and param.do_create:
                 log.Info("'%s': notification parameter '%s' refers to generated JSON objects" % (name, param.name))
                 break
+
+    def _Check(self):
+        pass
 
 class JsonCallback(JsonMethod):
     def __init__(self, name, parent, notification, schema, included=None):

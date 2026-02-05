@@ -230,6 +230,14 @@ class Bool(Fundamental):
     def __init__(self):
         Fundamental.__init__(self, "bool")
 
+class Int24(Fundamental):
+    def __init__(self, signed=False):
+        Fundamental.__init__(self, "Core::Int24" if signed else "Core::UInt24")
+        self.signed = signed
+        self.fixed = False
+        self.min = -2**23 if signed else 0
+        self.max = 2**23-1 if signed else 2**24-1
+        self.size = "int24"
 
 class Integer(Fundamental):
     def __init__(self, string):
@@ -787,6 +795,10 @@ class Identifier():
                 elif type in ["int", "char", "wchar_t", "char16_t", "char32_t", "short", "long", "signed", "unsigned",
                               "int8_t", "uint8_t", "int16_t", "uint16_t", "int32_t", "uint32_t", "int64_t", "uint64_t"]:
                     self.type[i] = Type(Integer(self.type[i]))
+                elif type == "__stubgen_int24":
+                    self.type[i] = Type(Int24(signed=True))
+                elif type == "__stubgen_uint24":
+                    self.type[i] = Type(Int24())
                 elif type == "bool":
                     self.type[i] = Type(Bool())
                 elif type == "void":
@@ -850,19 +862,25 @@ class Identifier():
 
     def TypeStrong(self):
         if self.array:
-            return ("%s[%s]" % (self.type.Proto("nocv|noref|noptr"), self.array))
+            return ("%s[%s]" % (self.type.Proto("noref|noptr"), self.array))
         else:
             return self.Proto()
 
+    def TypeStrongNoCV(self):
+        if self.array:
+            return ("%s[%s]" % (self.type.Proto("noref|noptr|nocv|nopcv"), self.array))
+        else:
+            return self.type.Proto("nocv|nopcv")
+
     def ProtoFmt(self):
         if self.array:
-            return ("%s @[%s]" % (self.type.Proto("nocv|noref|noptr"), self.array))
+            return ("%s @[%s]" % (self.type.Proto("noref|noptr"), self.array))
         else:
             return "%s @" % self.Proto()
 
     def Signature(self, override=None):
         if self.array:
-            return ("%s %s[%s]" % (self.type.Proto("nocv|noref|noptr"), override if override != None else self.name, self.array))
+            return ("%s %s[%s]" % (self.type.Proto(), override if override != None else self.name, self.array))
         else:
             return (self.Proto() + " " + (override if override != None else self.name))
 
@@ -916,6 +934,8 @@ def Evaluate(identifiers_, as_identifier=False, scope=None):
     return value
 
 
+ANONYMOUS_PREFIX = "__anonymous"
+
 # Holds a name
 class Name:
     def __init__(self, parent_block, name=""):
@@ -923,7 +943,7 @@ class Name:
             ASSERT_ISVALID(name)
         self.parent = parent_block
         # come up with an unique name if none given
-        uniqueId = "__anonymous_" + self.__class__.__name__.lower() + "_" + uuid.uuid4().hex[:8]
+        uniqueId = '_'.join([ANONYMOUS_PREFIX, self.__class__.__name__.lower(), uuid.uuid4().hex[:8]])
         parentName = "" if self.parent == None else self.parent.full_name
         self.name = uniqueId if (not name and self.parent != None) else name
         self.full_name = parentName + ("" if not self.name else "::" + self.name)
@@ -1456,6 +1476,7 @@ class Variable(Identifier, Name):
         Identifier.__init__(self, parent_block, self, string, valid_specifiers)
         Name.__init__(self, parent_block, self.name)
         self.value = Evaluate(value, scope=parent_block) if value else None
+
         if self.parent:
             self.parent.vars.append(self)
 
@@ -1474,6 +1495,13 @@ class Parameter(Variable):
     def __init__(self, parent_block, string, value=[], valid_specifiers=[]):
         Variable.__init__(self, parent_block, string, None, valid_specifiers)
         self.def_value = Evaluate(value, scope=parent_block.parent) if value else None
+
+        if self.name.startswith(ANONYMOUS_PREFIX):
+            # Correct the random number, for parameter
+            split = self.name.split('_')
+            split[-1] = str(len(self.parent.vars))
+            self.name = "_".join(split)
+
         if self.name in parent_block.retval.meta.param:
             self.meta.brief = parent_block.retval.meta.param[self.name]
 
