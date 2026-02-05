@@ -6,12 +6,16 @@ on:
     branches: [ master ]
     paths:
       - "LuaGenerator/**"
+      - "ProxyStubGenerator/**"
       - ".github/workflows/LuaGenerator.yml"
+      - ".github/workflows/ProxyStubGenerator.yml"
   pull_request:
     branches: [ master ]
     paths:
       - "LuaGenerator/**"
+      - "ProxyStubGenerator/**"
       - ".github/workflows/LuaGenerator.yml"
+      - ".github/workflows/ProxyStubGenerator.yml"
 
 permissions:
   contents: write
